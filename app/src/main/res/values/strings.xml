@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pageless</string>
+
+    <!--
+      Media notification / lock-screen transport actions. These replace Media3's
+      stock "previous track" / "next track" actions, which are meaningless for a
+      book loaded as a single media item. Read aloud by TalkBack, so they spell
+      out the jump amount.
+    -->
+    <plurals name="notification_action_jump_backward">
+        <item quantity="one">Back %d second</item>
+        <item quantity="other">Back %d seconds</item>
+    </plurals>
+    <plurals name="notification_action_jump_forward">
+        <item quantity="one">Forward %d second</item>
+        <item quantity="other">Forward %d seconds</item>
+    </plurals>
+    <string name="notification_action_play">Play</string>
+    <string name="notification_action_pause">Pause</string>
 </resources>

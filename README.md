@@ -159,6 +159,11 @@ mix ecto.migrate
   on media notification controls”. When disabled, external controllers get a
   reduced seek command set so the notification/lock-screen scrub bar is hidden;
   the in-app player still has full seek support.
+- External transport controls — Bluetooth headphones, the media notification and
+  the lock screen — jump backward/forward by the configured “Jump
+  backward/forward amount” instead of skipping tracks, and are labelled with
+  matching skip icons. A book is loaded as a single media item, so Media3's stock
+  previous would otherwise restart the book from the beginning.
 - Bookmark previews use a separate ExoPlayer instance inside the bookmark dialog
   and do not affect normal book progress.
 

@@ -2,8 +2,11 @@ package live.pageless.mobile.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
 import android.os.SystemClock
+import android.view.KeyEvent
 import androidx.annotation.OptIn
+import androidx.core.content.IntentCompat
 import androidx.media3.common.Player
 import androidx.media3.common.Player.PositionInfo
 import androidx.media3.common.util.UnstableApi
@@ -11,9 +14,13 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionCommands
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +71,13 @@ class PlaybackService : MediaSessionService() {
 
     // Whether external controllers (media notification / lock screen) may seek.
     @Volatile private var allowSeekFromNotification = false
+
+    // The user's configured jump amounts, read on demand by
+    // AudiobookTransportPlayer and by the transport callbacks below, so a change
+    // in Settings takes effect without rebuilding the player or the session.
+    @Volatile private var jumpBackwardSeconds = DEFAULT_JUMP_BACKWARD_SECONDS
+
+    @Volatile private var jumpForwardSeconds = DEFAULT_JUMP_FORWARD_SECONDS
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var saveJob: Job? = null
@@ -120,18 +134,20 @@ class PlaybackService : MediaSessionService() {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
 
+        // Give the session a wrapped player: it withholds the track-skip
+        // commands, whose stock behaviour on a single-item timeline is to
+        // restart the book. The raw `player` is kept for our own state reads.
         mediaSession =
             MediaSession
-                .Builder(this, player)
+                .Builder(this, AudiobookTransportPlayer(player, ::currentJumpAmounts))
                 .setSessionActivity(contentIntent)
                 .setCallback(SessionCallback())
                 .build()
 
-        // Brand the media notification's status-bar icon.
+        // Order the notification row as back / play / forward, and brand the
+        // status-bar icon.
         setMediaNotificationProvider(
-            DefaultMediaNotificationProvider
-                .Builder(this)
-                .build()
+            AudiobookNotificationProvider(this)
                 .apply { setSmallIcon(R.drawable.ic_stat_pageless) },
         )
 
@@ -149,19 +165,64 @@ class PlaybackService : MediaSessionService() {
                     session.connectedControllers.forEach { controller ->
                         session.setAvailableCommands(
                             controller,
-                            MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS,
+                            sessionCommands(),
                             playerCommandsFor(controller, allow),
                         )
                     }
                 }
         }
+
+        // Publish the jump buttons and keep their icon and label in step with
+        // the setting. Media3 refreshes the notification itself in response to
+        // setMediaButtonPreferences, and the wrapped player reads the amounts
+        // from these fields on demand.
+        scope.launch {
+            settingsStore.settings
+                .map { it.jumpBackwardSeconds to it.jumpForwardSeconds }
+                .distinctUntilChanged()
+                .collect { (backward, forward) ->
+                    jumpBackwardSeconds = backward
+                    jumpForwardSeconds = forward
+                    mediaSession?.setMediaButtonPreferences(
+                        JumpControls.buttons(this@PlaybackService, backward, forward),
+                    )
+                }
+        }
     }
+
+    private fun currentJumpAmounts(): JumpAmounts =
+        JumpAmounts(
+            backwardMs = jumpBackwardSeconds * 1000L,
+            forwardMs = jumpForwardSeconds * 1000L,
+        )
+
+    /**
+     * Seeks relative to the current position, clamped to the media. Must be
+     * called on the player's application thread.
+     */
+    private fun jumpBy(deltaMs: Long) {
+        player.seekTo(JumpSeek.target(player.currentPosition, deltaMs, player.duration))
+    }
+
+    /**
+     * The default session commands plus [JumpControls]', which every controller
+     * needs for Media3 to treat the jump buttons as enabled.
+     */
+    private fun sessionCommands(): SessionCommands =
+        MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS
+            .buildUpon()
+            .also { builder -> JumpControls.sessionCommands.forEach(builder::add) }
+            .build()
 
     /**
      * Player commands granted to external controllers (media notification, lock
      * screen, Android Auto, etc). When notification seeking is disabled we strip
      * the seek-within-item commands so no scrub bar is shown, while keeping
-     * play/pause and next/previous-item transport.
+     * play/pause.
+     *
+     * These grants are intersected with what the session's player advertises, so
+     * stripping nothing here does not mean everything is available — notably
+     * [AudiobookTransportPlayer] withholds the track-skip commands.
      */
     private fun playerCommandsFor(
         controller: MediaSession.ControllerInfo,
@@ -182,8 +243,66 @@ class PlaybackService : MediaSessionService() {
         ): MediaSession.ConnectionResult =
             MediaSession.ConnectionResult
                 .AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(sessionCommands())
                 .setAvailablePlayerCommands(playerCommandsFor(controller, allowSeekFromNotification))
                 .build()
+
+        /** Taps on the notification / system media panel jump buttons. */
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                JumpControls.ACTION_JUMP_BACKWARD -> jumpBy(-jumpBackwardSeconds * 1000L)
+                JumpControls.ACTION_JUMP_FORWARD -> jumpBy(jumpForwardSeconds * 1000L)
+                else -> return super.onCustomCommand(session, controller, customCommand, args)
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
+        /**
+         * Hardware transport keys, most importantly AVRCP previous/next from
+         * Bluetooth headphones.
+         *
+         * Handled here rather than on the player because Media3 checks command
+         * availability before dispatching these, and
+         * [AudiobookTransportPlayer] deliberately withholds the track-skip
+         * commands to keep them out of the published `PlaybackState`. This
+         * callback runs first (before Media3's own key handling) and on the
+         * player's application thread.
+         *
+         * Rewind and fast-forward are left to Media3: they map to
+         * `seekBack()` / `seekForward()`, which already use the configured
+         * increments.
+         */
+        override fun onMediaButtonEvent(
+            session: MediaSession,
+            controllerInfo: MediaSession.ControllerInfo,
+            intent: Intent,
+        ): Boolean {
+            val keyCode = mediaButtonKeyCode(intent) ?: return false
+            when (keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PREVIOUS,
+                KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD,
+                -> jumpBy(-jumpBackwardSeconds * 1000L)
+
+                KeyEvent.KEYCODE_MEDIA_NEXT,
+                KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD,
+                -> jumpBy(jumpForwardSeconds * 1000L)
+
+                else -> return false
+            }
+            return true
+        }
+
+        private fun mediaButtonKeyCode(intent: Intent): Int? {
+            if (intent.action != Intent.ACTION_MEDIA_BUTTON) return null
+            val event =
+                IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+            return event?.takeIf { it.action == KeyEvent.ACTION_DOWN }?.keyCode
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
@@ -387,5 +506,10 @@ class PlaybackService : MediaSessionService() {
     companion object {
         private const val SAVE_INTERVAL_MS = 10_000L
         private const val ACTIVE_SYNC_INTERVAL_MS = 60_000L
+
+        // Mirror PlayerSettings' defaults, used only for the brief window
+        // before the first DataStore emission arrives.
+        private const val DEFAULT_JUMP_BACKWARD_SECONDS = 15
+        private const val DEFAULT_JUMP_FORWARD_SECONDS = 30
     }
 }

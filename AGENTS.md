@@ -214,6 +214,51 @@ on the JVM.
   observes the setting and re-grants commands to connected controllers at
   runtime via `setAvailableCommands`. This only limits the notification/lock
   screen — the in-app player is unaffected.
+- **External transport is jump-backward/forward, never track skip.** A book is a
+  **single `MediaItem`** (chapters are UI-side arithmetic), so Media3's stock
+  previous is actively destructive: `KEYCODE_MEDIA_PREVIOUS` reaches
+  `Player.seekToPrevious()`, which finds no previous item and falls through to
+  *"seek to 0"*, restarting the whole book. Three pieces implement the
+  replacement, and they only work together:
+  1. `AudiobookTransportPlayer` (a `ForwardingSimpleBasePlayer` wrapped around
+     the ExoPlayer before `MediaSession.Builder`) **withholds**
+     `COMMAND_SEEK_TO_PREVIOUS`/`_NEXT` and their `_MEDIA_ITEM` variants, and
+     reports `jumpBackwardSeconds`/`jumpForwardSeconds` as the seek-back/forward
+     increments. Do **not** switch this to a plain `ForwardingPlayer`:
+     `MediaSessionImpl` takes its command set from the
+     `onAvailableCommandsChanged` *event*, and `ForwardingPlayer` re-emits the
+     delegate's unmodified set, so the change is reverted on every timeline
+     change.
+  2. `JumpControls` publishes the two buttons as **custom `SessionCommand`s** via
+     `MediaSession.setMediaButtonPreferences`, granted to every controller in
+     `onConnect` and handled in `Callback.onCustomCommand`.
+  3. `Callback.onMediaButtonEvent` intercepts `KEYCODE_MEDIA_PREVIOUS`/`NEXT`
+     (and the `SKIP_BACKWARD`/`FORWARD` variants) for Bluetooth headsets. It has
+     to be there rather than on the player because Media3 checks command
+     availability before dispatching, and step 1 withheld those commands. This
+     callback runs before Media3's own key handling, on the app thread.
+- **Why custom commands and not just nicer notification icons:** since Android 13
+  the shade and lock screen ignore our notification's actions and render their
+  own panel from the session's `PlaybackState`. Standard actions like
+  `ACTION_SKIP_TO_PREVIOUS` get fixed system track-skip icons that cannot be
+  overridden; only `PlaybackStateCompat.CustomAction`s carry an app icon, and
+  `PlayerWrapper.createPlaybackStateCompat` only emits those for buttons holding
+  a `COMMAND_CODE_CUSTOM` session command. Withholding the player commands
+  (step 1) is what removes the system's own prev/next buttons. Verify with
+  `adb shell dumpsys media_session`: our session must show `custom actions=[Back
+  …, Forward …]` and an `actions` mask with bits 4/5
+  (`ACTION_SKIP_TO_PREVIOUS`/`NEXT`) **clear**.
+- `AudiobookNotificationProvider` only reorders Media3's own notification to
+  "back / play / forward"; `DefaultMediaNotificationProvider` would otherwise
+  append custom buttons after play/pause. Media3 only bundles numbered icons for
+  5/10/15/30 s; the other values Settings offers fall back to unnumbered arrows.
+  `setMediaButtonPreferences` triggers the notification rebuild itself, so no
+  manual `onUpdateNotification` is needed when the amounts change.
+- Absolute seeks (`COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM`) are untouched throughout,
+  which is why the in-app skip and chapter buttons are unaffected. A
+  chapter-per-`MediaItem` timeline would make prev/next natively meaningful and
+  is the obvious long-term alternative, but it changes progress mapping and
+  download/stream URI handling.
 - The `SystemForegroundService` used by WorkManager needs
   `foregroundServiceType="dataSync"`, and the playback service uses
   `mediaPlayback`; both are declared in the manifest.

@@ -9,6 +9,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+      Confirms a bookmark created from the next-track button. That press happens
+      with the screen off and the phone pocketed, where no visual confirmation
+      reaches the user. Normal permission, granted at install with no prompt.
+    -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!--
       Backup and transfer are deliberately disabled. The "session" DataStore

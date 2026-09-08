@@ -164,6 +164,12 @@ mix ecto.migrate
   backward/forward amount” instead of skipping tracks, and are labelled with
   matching skip icons. A book is loaded as a single media item, so Media3's stock
   previous would otherwise restart the book from the beginning.
+- The setting “Bookmark with the next-track button” (off by default) makes a
+  press of next on a Bluetooth headset, car controls or a wired remote create a
+  bookmark at the current position instead of jumping forward, confirmed by a
+  short vibration. Useful for bookmarking without looking at the phone, since
+  headsets tend to swallow multi-press gestures. The notification's forward
+  button is unaffected and keeps jumping.
 - Bookmark previews use a separate ExoPlayer instance inside the bookmark dialog
   and do not affect normal book progress.
 

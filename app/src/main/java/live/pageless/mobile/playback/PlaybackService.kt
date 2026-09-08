@@ -37,9 +37,11 @@ import kotlinx.coroutines.withContext
 import live.pageless.mobile.MainActivity
 import live.pageless.mobile.R
 import live.pageless.mobile.data.local.PlayerSettingsStore
+import live.pageless.mobile.data.repository.BookmarkRepository
 import live.pageless.mobile.data.repository.PlaybackHistoryRepository
 import live.pageless.mobile.data.repository.PlaybackSessionStart
 import live.pageless.mobile.data.repository.ProgressRepository
+import live.pageless.mobile.data.sync.SyncScheduler
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 
@@ -60,6 +62,10 @@ class PlaybackService : MediaSessionService() {
 
     @Inject lateinit var playbackHistoryRepository: PlaybackHistoryRepository
 
+    @Inject lateinit var bookmarkRepository: BookmarkRepository
+
+    @Inject lateinit var syncScheduler: SyncScheduler
+
     // Shared authenticated OkHttp client so ExoPlayer's HTTP requests carry the
     // bearer token (streaming) via the same interceptors as the API client.
     @Inject lateinit var okHttpClient: OkHttpClient
@@ -78,6 +84,13 @@ class PlaybackService : MediaSessionService() {
     @Volatile private var jumpBackwardSeconds = DEFAULT_JUMP_BACKWARD_SECONDS
 
     @Volatile private var jumpForwardSeconds = DEFAULT_JUMP_FORWARD_SECONDS
+
+    // Whether the next-track button bookmarks instead of jumping forward, and
+    // when it last did. The timestamp is monotonic
+    // (SystemClock.elapsedRealtime()) and confined to the player's application
+    // thread, where every media button event is delivered.
+    @Volatile private var bookmarkOnMediaNextButton = false
+    private var lastHeadsetBookmarkAtMs: Long? = null
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var saveJob: Job? = null
@@ -188,6 +201,13 @@ class PlaybackService : MediaSessionService() {
                     )
                 }
         }
+
+        scope.launch {
+            settingsStore.settings
+                .map { it.bookmarkOnMediaNextButton }
+                .distinctUntilChanged()
+                .collect { bookmarkOnMediaNextButton = it }
+        }
     }
 
     private fun currentJumpAmounts(): JumpAmounts =
@@ -202,6 +222,40 @@ class PlaybackService : MediaSessionService() {
      */
     private fun jumpBy(deltaMs: Long) {
         player.seekTo(JumpSeek.target(player.currentPosition, deltaMs, player.duration))
+    }
+
+    /**
+     * Bookmarks the current position, for the "Bookmark with the next-track
+     * button" setting. Must be called on the player's application thread.
+     *
+     * The bookmark is stored locally with no note, exactly as the in-app dialog
+     * does when the note is left blank; the position and chapter shown in the
+     * bookmark lists are derived, not stored. Being offline-first, this cannot
+     * meaningfully fail — but it also will not reach the server until a sync, so
+     * one is requested.
+     */
+    private fun createBookmarkAtCurrentPosition() {
+        // A bookmark preview borrows the session player; bookmarking the preview
+        // position would be nonsense. Mirrors the guard in saveNow().
+        if (player.currentMediaItem
+                ?.mediaMetadata
+                ?.extras
+                ?.getBoolean(PlayerConnection.EXTRA_PREVIEW) == true
+        ) {
+            return
+        }
+        val bookId = player.currentMediaItem?.mediaId ?: return
+        val positionSeconds = player.currentPosition.coerceAtLeast(0) / 1000.0
+
+        lastHeadsetBookmarkAtMs = SystemClock.elapsedRealtime()
+        BookmarkHaptics.confirm(this)
+
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                bookmarkRepository.add(bookId, positionSeconds, note = null)
+            }
+            syncScheduler.enqueueNow()
+        }
     }
 
     /**
@@ -276,6 +330,11 @@ class PlaybackService : MediaSessionService() {
          * Rewind and fast-forward are left to Media3: they map to
          * `seekBack()` / `seekForward()`, which already use the configured
          * increments.
+         *
+         * Only these hardware keys honour the bookmark remap. The notification
+         * and lock-screen forward button is a custom command handled above, and
+         * it keeps jumping — it is visibly labelled "Forward N seconds", so
+         * remapping something the user can read would be baffling.
          */
         override fun onMediaButtonEvent(
             session: MediaSession,
@@ -290,18 +349,35 @@ class PlaybackService : MediaSessionService() {
 
                 KeyEvent.KEYCODE_MEDIA_NEXT,
                 KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD,
-                -> jumpBy(jumpForwardSeconds * 1000L)
+                ->
+                    if (bookmarkOnMediaNextButton) {
+                        // Swallow presses that arrive too close together, whatever
+                        // the outcome, so a debounced press is not silently turned
+                        // into a forward jump instead.
+                        if (HeadsetBookmark.shouldCreate(SystemClock.elapsedRealtime(), lastHeadsetBookmarkAtMs)) {
+                            createBookmarkAtCurrentPosition()
+                        }
+                    } else {
+                        jumpBy(jumpForwardSeconds * 1000L)
+                    }
 
                 else -> return false
             }
             return true
         }
 
+        /**
+         * The key code of a press worth acting on, or null. Auto-repeat from a
+         * held button is dropped: nothing downstream deduplicates bookmarks, so
+         * a held next button would otherwise create a row per repeat.
+         */
         private fun mediaButtonKeyCode(intent: Intent): Int? {
             if (intent.action != Intent.ACTION_MEDIA_BUTTON) return null
             val event =
                 IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
-            return event?.takeIf { it.action == KeyEvent.ACTION_DOWN }?.keyCode
+            return event
+                ?.takeIf { it.action == KeyEvent.ACTION_DOWN && it.repeatCount == 0 }
+                ?.keyCode
         }
     }
 

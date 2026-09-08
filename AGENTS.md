@@ -259,6 +259,34 @@ on the JVM.
   chapter-per-`MediaItem` timeline would make prev/next natively meaningful and
   is the obvious long-term alternative, but it changes progress mapping and
   download/stream URI handling.
+- **"Bookmark with the next-track button"** (default off) remaps
+  `KEYCODE_MEDIA_NEXT` / `_SKIP_FORWARD` to create a bookmark at the current
+  position. It is deliberately scoped to **hardware keys only** — the
+  notification/lock-screen forward button is a custom command handled in
+  `onCustomCommand` and keeps jumping, because it is visibly labelled "Forward
+  N seconds". The point of the feature is the case where the user cannot see a
+  screen: headset firmware tends to swallow multi-press gestures, so a single
+  press of an existing button is the only reliable trigger.
+- That path needs three guards, because **nothing downstream deduplicates**:
+  `BookmarkRepository.add` mints a fresh UUID per call and `bookmarks` has no
+  unique index on `(bookId, positionSeconds)`. So `mediaButtonKeyCode` drops
+  auto-repeat (`repeatCount != 0`), `HeadsetBookmark.shouldCreate` debounces
+  double-fires on `SystemClock.elapsedRealtime()`, and a debounced press is
+  swallowed rather than falling through to a forward jump. It also mirrors
+  `saveNow()`'s `EXTRA_PREVIEW` guard so a bookmark preview cannot bookmark
+  itself.
+- The bookmark is stored with `note = null`, identical to the in-app dialog with
+  the note left blank; position and chapter are derived at render time, never
+  stored. Confirmation is a `BookmarkHaptics` pulse (hence
+  `android.permission.VIBRATE`): the press happens screen-off and pocketed,
+  where toasts are suppressed for background apps on Android 12+ and never
+  render on the lock screen. It uses `EFFECT_HEAVY_CLICK`, not the much fainter
+  `EFFECT_TICK`, because it has to carry through a pocket while the user is
+  listening to something else. Predefined effects have no duration parameter —
+  they are vendor-tuned waveforms — so the length is fixed unless the code drops
+  to `createOneShot`/`createWaveform` and gives up that tuning. `PlaybackService` otherwise only syncs *progress*,
+  so it also calls `SyncScheduler.enqueueNow()` — without it a headset bookmark
+  sits dirty for up to 15 minutes.
 - The `SystemForegroundService` used by WorkManager needs
   `foregroundServiceType="dataSync"`, and the playback service uses
   `mediaPlayback`; both are declared in the manifest.

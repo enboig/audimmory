@@ -57,6 +57,10 @@ class SettingsViewModel
             viewModelScope.launch { store.setAllowSeekFromNotification(value) }
         }
 
+        fun setBookmarkOnMediaNextButton(value: Boolean) {
+            viewModelScope.launch { store.setBookmarkOnMediaNextButton(value) }
+        }
+
         fun setThemeMode(value: ThemeMode) {
             viewModelScope.launch { store.setThemeMode(value) }
         }

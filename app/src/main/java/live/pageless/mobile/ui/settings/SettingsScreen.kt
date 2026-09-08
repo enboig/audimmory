@@ -192,6 +192,17 @@ fun SettingsScreen(
             )
             HorizontalDivider()
 
+            SwitchRow(
+                label = "Bookmark with the next-track button",
+                checked = settings.bookmarkOnMediaNextButton,
+                description =
+                    "Bluetooth headsets, car controls and wired remotes create a bookmark at the " +
+                        "current position instead of jumping forward. The notification's forward " +
+                        "button is unaffected.",
+                onChange = viewModel::setBookmarkOnMediaNextButton,
+            )
+            HorizontalDivider()
+
             Text(
                 "About",
                 style = MaterialTheme.typography.titleMedium,

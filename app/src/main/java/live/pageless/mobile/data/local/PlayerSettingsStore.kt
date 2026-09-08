@@ -25,6 +25,7 @@ data class PlayerSettings(
     val showChapterStartOnBookDetail: Boolean = true,
     val showChapterDurationOnBookDetail: Boolean = true,
     val allowSeekFromNotification: Boolean = false,
+    val bookmarkOnMediaNextButton: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
 )
 
@@ -46,6 +47,7 @@ class PlayerSettingsStore
             val SHOW_CHAPTER_START_BOOK_DETAIL = booleanPreferencesKey("show_chapter_start_book_detail")
             val SHOW_CHAPTER_DURATION_BOOK_DETAIL = booleanPreferencesKey("show_chapter_duration_book_detail")
             val ALLOW_SEEK_FROM_NOTIFICATION = booleanPreferencesKey("allow_seek_from_notification")
+            val BOOKMARK_ON_MEDIA_NEXT_BUTTON = booleanPreferencesKey("bookmark_on_media_next_button")
             val THEME_MODE = stringPreferencesKey("theme_mode")
         }
 
@@ -61,6 +63,7 @@ class PlayerSettingsStore
                     showChapterStartOnBookDetail = prefs[Keys.SHOW_CHAPTER_START_BOOK_DETAIL] ?: true,
                     showChapterDurationOnBookDetail = prefs[Keys.SHOW_CHAPTER_DURATION_BOOK_DETAIL] ?: true,
                     allowSeekFromNotification = prefs[Keys.ALLOW_SEEK_FROM_NOTIFICATION] ?: false,
+                    bookmarkOnMediaNextButton = prefs[Keys.BOOKMARK_ON_MEDIA_NEXT_BUTTON] ?: false,
                     themeMode =
                         prefs[Keys.THEME_MODE]?.let { value ->
                             ThemeMode.entries.firstOrNull { it.name == value }
@@ -102,6 +105,10 @@ class PlayerSettingsStore
 
         suspend fun setAllowSeekFromNotification(value: Boolean) {
             context.playerSettingsStore.edit { it[Keys.ALLOW_SEEK_FROM_NOTIFICATION] = value }
+        }
+
+        suspend fun setBookmarkOnMediaNextButton(value: Boolean) {
+            context.playerSettingsStore.edit { it[Keys.BOOKMARK_ON_MEDIA_NEXT_BUTTON] = value }
         }
 
         suspend fun setThemeMode(value: ThemeMode) {

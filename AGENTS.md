@@ -79,6 +79,10 @@ docs and the endpoint table; this file captures conventions and gotchas.
   falls back to an unsigned APK when the secrets are absent. Users install
   these APKs with Obtainium, so every release must keep the same key
   (SHA-256 `5D:45:71:E0:…:E3:10:61`) or updates stop installing.
+  `scripts/release.sh` is the local equivalent (same version scheme, commit,
+  tag and changelog; signs from `keystore.properties`, refuses to publish an
+  APK with any other certificate, and rolls back its commit and tag if the
+  build fails before pushing). Keep the two in step.
 - **Distribution:** not published in any store yet. `fdroid/org.audimmory.mobile.yml`
   is an unsubmitted draft recipe (see `fdroid/README.md`). Pageless itself is on
   F-Droid as `live.pageless.mobile`; that listing belongs to upstream and must

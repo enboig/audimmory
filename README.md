@@ -83,7 +83,18 @@ your own key (see `keystore.properties` / `AUDIMMORY_UPLOAD_*` in
 [GitHub Releases](https://github.com/enboig/audimmory/releases) are signed by
 the release workflow with the maintainer's key (certificate SHA-256
 `5D:45:71:E0:54:57:C4:FF:76:4B:A5:2D:9A:41:65:33:45:7E:16:96:3C:36:2C:79:4E:D2:70:EA:DD:E3:10:61`);
-install them directly or track the repository with Obtainium. Audimmory is not
+install them directly or track the repository with Obtainium.
+
+To release from your own machine instead of GitHub Actions (needs
+`keystore.properties`, a logged-in `gh`, and a clean, pushed `master`):
+
+```sh
+scripts/release.sh "What changed, for users (max 500 characters)"
+```
+
+It runs the same checks as CI, creates the same release commit and tag as the
+workflow, builds and verifies the signed APK, then pushes and publishes the
+GitHub Release. `--skip-checks` skips ktlint, Lint and the unit tests. Audimmory is not
 yet published on F-Droid; see [`fdroid/README.md`](fdroid/README.md).
 
 ## Connecting To A Server

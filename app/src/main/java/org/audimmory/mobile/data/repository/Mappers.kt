@@ -4,6 +4,7 @@ import org.audimmory.mobile.data.local.BookEntity
 import org.audimmory.mobile.data.local.BookFacetEntity
 import org.audimmory.mobile.data.local.ChapterEntity
 import org.audimmory.mobile.data.local.ProgressEntity
+import org.audimmory.mobile.data.local.TrackEntity
 import org.audimmory.mobile.data.remote.AuthorDto
 import org.audimmory.mobile.data.remote.BookDetailDto
 import org.audimmory.mobile.data.remote.BookSummaryDto
@@ -12,10 +13,10 @@ import org.audimmory.mobile.data.remote.GenreDto
 import org.audimmory.mobile.data.remote.NarratorDto
 import org.audimmory.mobile.data.remote.ProgressDto
 import org.audimmory.mobile.data.remote.PublisherDto
-import org.audimmory.mobile.data.remote.SeriesBookDto
 import org.audimmory.mobile.data.remote.SeriesRefDto
+import org.audimmory.mobile.data.remote.TrackDto
 
-/** Conversions between wire DTOs and local Room entities. */
+/** Conversions between app transfer models and local Room entities. */
 
 private fun cachedCoverPath(
     existing: BookEntity?,
@@ -29,27 +30,34 @@ private fun cachedCoverUpdatedAt(
     updatedAt: String?,
 ): String? = existing?.takeIf { hasCover && it.coverUpdatedAt == updatedAt }?.coverUpdatedAt
 
+/**
+ * List endpoints carry no duration or audio layout, so a summary keeps what a
+ * previously fetched detail stored.
+ */
 fun BookSummaryDto.toEntity(existing: BookEntity? = null): BookEntity =
     BookEntity(
         id = id,
         title = title,
-        subtitle = subtitle,
+        subtitle = subtitle ?: existing?.subtitle,
         authors = authors.joinToString(", ") { it.name }.ifEmpty { null },
         narrators = narrators.joinToString(", ") { it.name }.ifEmpty { null },
-        durationSeconds = durationSeconds,
+        durationSeconds = durationSeconds.takeIf { it > 0 } ?: existing?.durationSeconds ?: 0.0,
         size = size,
         publishedYear = publishedYear,
         publishedDate = publishedDate,
         addedAt = addedAt,
-        fileModified = fileModified,
+        fileModified = null,
         libraryId = libraryId,
         hasCover = hasCover,
+        audiobookCover = audiobookCover,
         coverLocalPath = cachedCoverPath(existing, hasCover, updatedAt),
         coverUpdatedAt = cachedCoverUpdatedAt(existing, hasCover, updatedAt),
         description = existing?.description,
         publisher = publisher?.name,
         language = language,
         updatedAt = updatedAt,
+        folderBased = existing?.folderBased ?: false,
+        bookFileId = existing?.bookFileId,
     )
 
 fun BookDetailDto.toEntity(existing: BookEntity? = null): BookEntity =
@@ -64,45 +72,23 @@ fun BookDetailDto.toEntity(existing: BookEntity? = null): BookEntity =
         publishedYear = publishedYear,
         publishedDate = publishedDate,
         addedAt = addedAt,
-        fileModified = fileModified,
+        fileModified = null,
         libraryId = libraryId,
         hasCover = hasCover,
+        audiobookCover = audiobookCover,
         coverLocalPath = cachedCoverPath(existing, hasCover, updatedAt),
         coverUpdatedAt = cachedCoverUpdatedAt(existing, hasCover, updatedAt),
         description = description ?: existing?.description,
         publisher = publisher?.name,
         language = language,
         updatedAt = updatedAt,
-    )
-
-fun SeriesBookDto.toEntity(existing: BookEntity? = null): BookEntity =
-    BookEntity(
-        id = id,
-        title = title,
-        subtitle = subtitle,
-        authors = authors.joinToString(", ") { it.name }.ifEmpty { null },
-        narrators = narrators.joinToString(", ") { it.name }.ifEmpty { null },
-        durationSeconds = durationSeconds,
-        size = size,
-        publishedYear = publishedYear,
-        publishedDate = publishedDate,
-        addedAt = addedAt,
-        fileModified = fileModified,
-        libraryId = libraryId,
-        hasCover = hasCover,
-        coverLocalPath = cachedCoverPath(existing, hasCover, updatedAt),
-        coverUpdatedAt = cachedCoverUpdatedAt(existing, hasCover, updatedAt),
-        description = existing?.description,
-        publisher = publisher?.name,
-        language = language,
-        updatedAt = updatedAt,
+        folderBased = folderBased,
+        bookFileId = bookFileId,
     )
 
 fun BookSummaryDto.toFacetEntities(): List<BookFacetEntity> = facetEntities(id, authors, narrators, genres, series, publisher, language)
 
 fun BookDetailDto.toFacetEntities(): List<BookFacetEntity> = facetEntities(id, authors, narrators, genres, series, publisher, language)
-
-fun SeriesBookDto.toFacetEntities(): List<BookFacetEntity> = facetEntities(id, authors, narrators, genres, series, publisher, language)
 
 private fun facetEntities(
     bookId: String,
@@ -143,6 +129,20 @@ fun ChapterDto.toEntity(bookId: String): ChapterEntity =
         index = index,
         startSeconds = startSeconds,
         endSeconds = endSeconds,
+    )
+
+fun TrackDto.toEntity(
+    bookId: String,
+    title: String?,
+): TrackEntity =
+    TrackEntity(
+        bookId = bookId,
+        index = index,
+        title = title,
+        fileName = fileName,
+        startMs = startMs,
+        durationMs = durationMs,
+        sizeBytes = sizeBytes,
     )
 
 fun ProgressDto.toEntity(dirty: Boolean = false): ProgressEntity =

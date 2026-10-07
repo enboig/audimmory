@@ -1,9 +1,10 @@
 package org.audimmory.mobile.data.repository
 
 import org.audimmory.mobile.data.local.BookDao
+import org.audimmory.mobile.data.local.ProgressDao
 import org.audimmory.mobile.data.local.SessionStore
 import org.audimmory.mobile.data.remote.BookSummaryDto
-import org.audimmory.mobile.data.remote.PagelessApi
+import org.audimmory.mobile.data.remote.GrimmoryClient
 import org.audimmory.mobile.data.remote.bookCoverUrl
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,7 +23,7 @@ data class ShelfBook(
 /** The home page's shelves. */
 data class HomeShelves(
     val continueListening: List<ShelfBook> = emptyList(),
-    val discover: List<ShelfBook> = emptyList(),
+    val recentlyAdded: List<ShelfBook> = emptyList(),
     val listenAgain: List<ShelfBook> = emptyList(),
 )
 
@@ -30,19 +31,20 @@ data class HomeShelves(
 class HomeRepository
     @Inject
     constructor(
-        private val api: PagelessApi,
+        private val client: GrimmoryClient,
         private val sessionStore: SessionStore,
         private val bookDao: BookDao,
+        private val progressDao: ProgressDao,
         private val connectionStatusRepository: ConnectionStatusRepository,
     ) {
         suspend fun load(): Result<HomeShelves> {
             val result =
                 runCatching {
                     val baseUrl = sessionStore.currentServerUrl()
-                    val home = api.home()
+                    val home = client.home()
                     HomeShelves(
                         continueListening = home.continueListening.map { it.toShelfBook(baseUrl) },
-                        discover = home.discover.map { it.toShelfBook(baseUrl) },
+                        recentlyAdded = home.recentlyAdded.map { it.toShelfBook(baseUrl) },
                         listenAgain = home.listenAgain.map { it.toShelfBook(baseUrl) },
                     )
                 }
@@ -53,20 +55,19 @@ class HomeRepository
         }
 
         private suspend fun BookSummaryDto.toShelfBook(baseUrl: String): ShelfBook {
+            // Local progress is fresher than the server's while it is unsynced.
+            val local = progressDao.get(id)
             val fraction =
-                progress?.let { p ->
-                    if (p.durationSeconds > 0) {
-                        (p.currentSeconds / p.durationSeconds).toFloat().coerceIn(0f, 1f)
-                    } else {
-                        null
-                    }
-                }
+                local
+                    ?.takeIf { it.durationSeconds > 0 }
+                    ?.let { (it.currentSeconds / it.durationSeconds).toFloat().coerceIn(0f, 1f) }
+                    ?: progressFraction
             return ShelfBook(
                 id = id,
                 title = title,
                 author = authors.joinToString(", ") { it.name }.ifEmpty { null },
-                coverUrl = bookDao.get(id)?.coverModel(baseUrl) ?: if (hasCover) bookCoverUrl(baseUrl, id) else null,
-                finished = progress?.finished == true,
+                coverUrl = bookDao.get(id)?.coverModel(baseUrl) ?: if (hasCover) bookCoverUrl(baseUrl, id, audiobookCover) else null,
+                finished = local?.finished ?: finished,
                 progressFraction = fraction,
             )
         }

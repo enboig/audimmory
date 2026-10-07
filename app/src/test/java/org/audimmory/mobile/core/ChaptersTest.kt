@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Mirrors the server's `Pageless.Library.Chapters.current_index/2` tests. */
+/** Originally mirrored the Pageless server's `Pageless.Library.Chapters.current_index/2` tests. */
 class ChaptersTest {
     private data class Ch(
         override val startSeconds: Double,

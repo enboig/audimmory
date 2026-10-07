@@ -1,18 +1,18 @@
 package org.audimmory.mobile.ui.book
 
 import android.content.Context
-import android.net.Uri
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -22,12 +22,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.audimmory.mobile.data.local.PlayerSettingsStore
-import org.audimmory.mobile.data.local.SessionStore
-import org.audimmory.mobile.data.remote.bookDownloadUrl
-import org.audimmory.mobile.data.repository.DownloadRepository
 import okhttp3.OkHttpClient
-import java.io.File
+import org.audimmory.mobile.data.local.PlayerSettingsStore
+import org.audimmory.mobile.playback.AudiobookMediaSourceFactory
+import org.audimmory.mobile.playback.BookAudioResolver
 import javax.inject.Inject
 
 data class BookmarkPreviewState(
@@ -47,9 +45,8 @@ class BookmarkPreviewViewModel
     @Inject
     constructor(
         @param:ApplicationContext private val context: Context,
-        private val downloadRepository: DownloadRepository,
+        private val bookAudioResolver: BookAudioResolver,
         private val playerSettingsStore: PlayerSettingsStore,
-        private val sessionStore: SessionStore,
         private val okHttpClient: OkHttpClient,
     ) : ViewModel() {
         private val _state = MutableStateFlow(BookmarkPreviewState())
@@ -93,13 +90,18 @@ class BookmarkPreviewViewModel
 
             viewModelScope.launch {
                 runCatching {
-                    val local = downloadRepository.localPathIfComplete(bookId)
-                    val uri =
-                        if (local != null) {
-                            Uri.fromFile(File(local))
-                        } else {
-                            Uri.parse(bookDownloadUrl(sessionStore.currentServerUrl(), bookId))
-                        }
+                    val tracks = bookAudioResolver.resolve(bookId)
+                    val item =
+                        MediaItem
+                            .Builder()
+                            .setMediaId(bookId)
+                            .setUri(tracks.first().uri)
+                            .setMediaMetadata(
+                                MediaMetadata
+                                    .Builder()
+                                    .setExtras(Bundle().apply { AudiobookMediaSourceFactory.writeTracks(this, tracks) })
+                                    .build(),
+                            ).build()
 
                     val dataSourceFactory =
                         DefaultDataSource.Factory(
@@ -108,13 +110,13 @@ class BookmarkPreviewViewModel
                         )
                     ExoPlayer
                         .Builder(context)
-                        .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+                        .setMediaSourceFactory(AudiobookMediaSourceFactory(dataSourceFactory))
                         .build()
                         .also { previewPlayer ->
                             player = previewPlayer
                             preparedKey = key
                             previewPlayer.addListener(listener)
-                            previewPlayer.setMediaItem(MediaItem.fromUri(uri), startPositionMs)
+                            previewPlayer.setMediaItem(item, startPositionMs)
                             previewPlayer.prepare()
                             startTicker()
                         }

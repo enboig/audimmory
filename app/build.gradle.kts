@@ -77,7 +77,7 @@ val hasUploadKey = uploadStoreFile?.isFile == true
 
 if (uploadStoreFile != null && !hasUploadKey) {
     logger.warn(
-        "Pageless: signing keystore configured but not found at ${uploadStoreFile.absolutePath}; " +
+        "Audimmory: signing keystore configured but not found at ${uploadStoreFile.absolutePath}; " +
             "release output will be UNSIGNED, which is the normal F-Droid path.",
     )
 }
@@ -109,7 +109,7 @@ android {
         minSdk = 26
         // Raising this to 37 is not a routine bump: Android 17 enforces Local
         // Network Protections for apps targeting SDK 37+, and every request to
-        // a LAN server — which is the normal Pageless deployment — is then
+        // a LAN server — which is the normal Grimmory deployment — is then
         // blocked until the user grants ACCESS_LOCAL_NETWORK at runtime.
         // Denying it looks like total app failure, so the permission flow has
         // to ship in the same change. Implement pm-a6l.20 first.
@@ -133,7 +133,7 @@ android {
             // Local dev default (emulator alias for the host's localhost);
             // overridable on the login screen. Debug builds also permit
             // cleartext HTTP via app/src/debug/res/xml/network_security_config.
-            buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://10.0.2.2:5050\"")
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://10.0.2.2:6060\"")
         }
         release {
             // No baked-in default: users enter their own HTTPS server. Release

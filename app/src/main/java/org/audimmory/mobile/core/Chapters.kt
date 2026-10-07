@@ -3,8 +3,9 @@ package org.audimmory.mobile.core
 /**
  * Pure chapter math.
  *
- * DUPLICATED FROM SERVER — keep in sync with `Pageless.Library.Chapters`
- * (`current_index/2`). Any consumer only needs [start] and [end] seconds.
+ * Inherited from Pageless, where it mirrored the server's
+ * `Pageless.Library.Chapters.current_index/2`. Any consumer only needs
+ * [start] and [end] seconds.
  */
 object Chapters {
     /** Minimal shape needed to locate a position within a chapter list. */

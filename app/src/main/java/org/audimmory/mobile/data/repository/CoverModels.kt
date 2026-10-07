@@ -13,7 +13,7 @@ fun BookEntity.coverModel(serverUrl: String): String? {
             ?.takeIf { hasCover && coverUpdatedAt == updatedAt && File(it).exists() }
             ?.let { Uri.fromFile(File(it)).toString() }
 
-    return local ?: if (hasCover) bookCoverUrl(serverUrl, id) else null
+    return local ?: if (hasCover) bookCoverUrl(serverUrl, id, audiobookCover) else null
 }
 
 /** Same local-first cover resolution for a lightweight membership preview row. */
@@ -23,5 +23,5 @@ fun MemberCoverRow.coverModel(serverUrl: String): String? {
             ?.takeIf { hasCover && coverUpdatedAt == updatedAt && File(it).exists() }
             ?.let { Uri.fromFile(File(it)).toString() }
 
-    return local ?: if (hasCover) bookCoverUrl(serverUrl, bookId) else null
+    return local ?: if (hasCover) bookCoverUrl(serverUrl, bookId, audiobookCover) else null
 }

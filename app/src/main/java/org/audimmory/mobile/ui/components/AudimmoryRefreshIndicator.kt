@@ -28,7 +28,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Themed pull-to-refresh indicator for Pageless: a ring of short radial line
+ * Themed pull-to-refresh indicator for Audimmory: a ring of short radial line
  * segments in the brand purple that rotate while their length pulses in and out,
  * housed in a rounded surface frame.
  *

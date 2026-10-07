@@ -9,6 +9,7 @@ import androidx.room.RoomDatabase
         BookFacetEntity::class,
         CachedLibraryEntity::class,
         ChapterEntity::class,
+        TrackEntity::class,
         ProgressEntity::class,
         DownloadEntity::class,
         BookmarkEntity::class,
@@ -21,7 +22,7 @@ import androidx.room.RoomDatabase
         PlaylistEntity::class,
         PlaylistBookEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 abstract class AudimmoryDatabase : RoomDatabase() {
@@ -32,6 +33,8 @@ abstract class AudimmoryDatabase : RoomDatabase() {
     abstract fun cachedLibraryDao(): CachedLibraryDao
 
     abstract fun chapterDao(): ChapterDao
+
+    abstract fun trackDao(): TrackDao
 
     abstract fun progressDao(): ProgressDao
 

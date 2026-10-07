@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Mirrors the server's `Pageless.Playback.finished_at_position?/2` doctests. */
+/** Originally mirrored the Pageless server's `Pageless.Playback.finished_at_position?/2` doctests. */
 class PlaybackRulesTest {
     @Test
     fun finishedAtThreshold() {

@@ -5,7 +5,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import org.audimmory.mobile.R
 
-/** JetBrains Mono — used for the Pageless brand wordmark. */
+/** JetBrains Mono — used for the Audimmory brand wordmark. */
 val JetBrainsMono =
     FontFamily(
         Font(R.font.jetbrains_mono_regular, FontWeight.Normal),

@@ -5,7 +5,7 @@
     android:viewportHeight="24"
     android:tint="#FFFFFF">
     <!--
-      Pageless status-bar / media notification silhouette. Three bars with
+      Status-bar / media notification silhouette. Three bars with
       moderate gaps (kept wide enough to survive the tiny status-bar size)
       plus THREE trailing columns of fading dots. Normalized 100-unit space
       (content x=20..103, y=30..76), scaled 0.26 and translated to center

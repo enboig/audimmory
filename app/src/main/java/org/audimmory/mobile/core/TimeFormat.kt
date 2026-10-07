@@ -3,7 +3,7 @@ package org.audimmory.mobile.core
 /**
  * Pure duration/timestamp formatting.
  *
- * DUPLICATED FROM SERVER — keep in sync with `Pageless.Format`
+ * Inherited from Pageless (mirrored its server's `Pageless.Format`)
  * (`duration/1`, `short_duration/1`, `clock/1`, `hms/1`, `parse_hms/1`).
  */
 object TimeFormat {

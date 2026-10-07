@@ -11,8 +11,12 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import org.audimmory.mobile.BuildConfig
 import org.audimmory.mobile.data.download.clearDownloadedContent
+import org.audimmory.mobile.data.local.AudimmoryDatabase
 import org.audimmory.mobile.data.local.BookDao
 import org.audimmory.mobile.data.local.BookFacetDao
 import org.audimmory.mobile.data.local.BookmarkDao
@@ -20,18 +24,16 @@ import org.audimmory.mobile.data.local.CachedLibraryDao
 import org.audimmory.mobile.data.local.ChapterDao
 import org.audimmory.mobile.data.local.CollectionDao
 import org.audimmory.mobile.data.local.DownloadDao
-import org.audimmory.mobile.data.local.AudimmoryDatabase
 import org.audimmory.mobile.data.local.PlaybackHistoryDao
 import org.audimmory.mobile.data.local.PlaylistDao
 import org.audimmory.mobile.data.local.ProgressDao
 import org.audimmory.mobile.data.local.SeriesDao
 import org.audimmory.mobile.data.local.SessionStore
+import org.audimmory.mobile.data.local.TrackDao
 import org.audimmory.mobile.data.remote.AuthInterceptor
 import org.audimmory.mobile.data.remote.BaseUrlInterceptor
-import org.audimmory.mobile.data.remote.PagelessApi
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
+import org.audimmory.mobile.data.remote.GrimmoryApi
+import org.audimmory.mobile.data.remote.TokenAuthenticator
 import retrofit2.Retrofit
 import javax.inject.Singleton
 
@@ -57,12 +59,15 @@ object AppModule {
     fun provideOkHttp(
         baseUrlInterceptor: BaseUrlInterceptor,
         authInterceptor: AuthInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient {
         val builder =
             OkHttpClient
                 .Builder()
                 .addInterceptor(baseUrlInterceptor)
                 .addInterceptor(authInterceptor)
+                // Grimmory access tokens expire after two hours; renew on 401.
+                .authenticator(tokenAuthenticator)
 
         if (BuildConfig.DEBUG) {
             builder.addInterceptor(
@@ -88,7 +93,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideApi(retrofit: Retrofit): PagelessApi = retrofit.create(PagelessApi::class.java)
+    fun provideApi(retrofit: Retrofit): GrimmoryApi = retrofit.create(GrimmoryApi::class.java)
 
     @Provides
     @Singleton
@@ -106,7 +111,7 @@ object AppModule {
             .addCallback(
                 object : RoomDatabase.Callback() {
                     // A destructive migration drops the rows that name the
-                    // downloaded .m4b files and cached covers, which would strand
+                    // downloaded audio files and cached covers, which would strand
                     // those files on disk: unreachable by the app, and impossible
                     // to reclaim from inside it. The download is re-creatable from
                     // the server; the orphan is not removable. Same reasoning as
@@ -124,6 +129,8 @@ object AppModule {
     @Provides fun provideCachedLibraryDao(db: AudimmoryDatabase): CachedLibraryDao = db.cachedLibraryDao()
 
     @Provides fun provideChapterDao(db: AudimmoryDatabase): ChapterDao = db.chapterDao()
+
+    @Provides fun provideTrackDao(db: AudimmoryDatabase): TrackDao = db.trackDao()
 
     @Provides fun provideProgressDao(db: AudimmoryDatabase): ProgressDao = db.progressDao()
 

@@ -4,13 +4,13 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.audimmory.mobile.data.local.BookDao
 import org.audimmory.mobile.data.local.BookEntity
 import org.audimmory.mobile.data.local.SessionStore
 import org.audimmory.mobile.data.remote.bookCoverUrl
 import org.audimmory.mobile.data.repository.CacheCoordinator
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
@@ -46,7 +46,7 @@ class CoverCache
                         return@exclusive existing.absolutePath
                     }
 
-                    val url = bookCoverUrl(sessionStore.currentServerUrl(), current.id)
+                    val url = bookCoverUrl(sessionStore.currentServerUrl(), current.id, current.audiobookCover)
                     val response = client.newCall(Request.Builder().url(url).build()).execute()
                     response.use {
                         if (!it.isSuccessful) throw IOException("cover HTTP ${it.code}")

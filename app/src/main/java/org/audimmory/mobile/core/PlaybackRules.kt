@@ -3,12 +3,11 @@ package org.audimmory.mobile.core
 /**
  * Pure, layer-agnostic playback rules.
  *
- * DUPLICATED FROM SERVER — keep in sync with the Elixir reference:
- *   - `Pageless.Playback.finished_threshold/0` + `finished_at_position?/2`
- *
- * These rules must match the server exactly so both ends agree on when a book
- * counts as finished during progress sync. The mirrored unit tests in
- * `PlaybackRulesTest` cover the same cases as the server's doctests.
+ * Grimmory marks a book read only at 99.5%, which in a long audiobook can be
+ * minutes of closing credits. The app keeps its own, earlier threshold and,
+ * when a book crosses it, reports 100% to Grimmory
+ * ([org.audimmory.mobile.data.remote.GrimmoryClient.updateProgress]) so both
+ * sides agree the book is finished.
  */
 object PlaybackRules {
     /** Fraction of a book's duration at which it is considered finished. */

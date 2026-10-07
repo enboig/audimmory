@@ -15,7 +15,7 @@ import javax.inject.Inject
 
 data class LoginUiState(
     val serverUrl: String = BuildConfig.DEFAULT_SERVER_URL,
-    val email: String = "",
+    val username: String = "",
     val password: String = "",
     val loading: Boolean = false,
     val error: String? = null,
@@ -38,36 +38,19 @@ class LoginViewModel
 
         fun onServerUrlChange(v: String) = _state.update { it.copy(serverUrl = v, error = null) }
 
-        fun onEmailChange(v: String) = _state.update { it.copy(email = v, error = null) }
+        fun onUsernameChange(v: String) = _state.update { it.copy(username = v, error = null) }
 
         fun onPasswordChange(v: String) = _state.update { it.copy(password = v, error = null) }
 
-        /**
-         * Fills the form with the public demo server's details.
-         *
-         * Deliberately fills rather than signs in: the point is to show what a
-         * Pageless server address looks like, and to let someone read the
-         * credentials before committing to them.
-         */
-        fun useDemoServer() =
-            _state.update {
-                it.copy(
-                    serverUrl = DEMO_SERVER_URL,
-                    email = DEMO_EMAIL,
-                    password = DEMO_PASSWORD,
-                    error = null,
-                )
-            }
-
         fun login(onSuccess: () -> Unit) {
             val s = _state.value
-            if (s.serverUrl.isBlank() || s.email.isBlank() || s.password.isBlank()) {
+            if (s.serverUrl.isBlank() || s.username.isBlank() || s.password.isBlank()) {
                 _state.update { it.copy(error = "All fields are required") }
                 return
             }
             _state.update { it.copy(loading = true, error = null) }
             viewModelScope.launch {
-                val result = authRepository.login(s.serverUrl, s.email, s.password)
+                val result = authRepository.login(s.serverUrl, s.username, s.password)
                 result.fold(
                     onSuccess = {
                         _state.update { it.copy(loading = false) }
@@ -80,21 +63,5 @@ class LoginViewModel
                     },
                 )
             }
-        }
-
-        companion object {
-            /**
-             * Public demo server, offered from the sign-in screen so the app can
-             * be tried without running a server first.
-             *
-             * These credentials are public by design — they are committed to a
-             * public repository and handed out by a button. The account holds
-             * nothing private, and anyone using it shares one library: progress,
-             * bookmarks and history sync last-write-wins, so concurrent demo
-             * users will see each other's positions move.
-             */
-            const val DEMO_SERVER_URL = "https://demo.pageless.live"
-            const val DEMO_EMAIL = "demo@example.com"
-            const val DEMO_PASSWORD = "demouser1234"
         }
     }

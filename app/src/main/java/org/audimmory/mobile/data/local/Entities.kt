@@ -5,9 +5,9 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Local mirror of the server's domain, keyed by the same UUID strings so
- * records reconcile 1:1 during sync. This is the offline-first source of truth
- * the UI reads from.
+ * Local mirror of the Grimmory server's audiobooks, keyed by the server's
+ * numeric IDs (as strings) so records reconcile 1:1 during sync. This is the
+ * offline-first source of truth the UI reads from.
  */
 
 @Entity(tableName = "books")
@@ -25,12 +25,37 @@ data class BookEntity(
     val fileModified: String?,
     val libraryId: String?,
     val hasCover: Boolean = false,
+    /** True when [hasCover] refers to Grimmory's dedicated audiobook cover. */
+    val audiobookCover: Boolean = false,
     val coverLocalPath: String? = null,
     val coverUpdatedAt: String? = null,
     val description: String?,
     val publisher: String?,
     val language: String?,
+    /** Cover version reported by the server; changes when the cover does. */
     val updatedAt: String?,
+    /** True for a directory of audio files streamed track by track. */
+    val folderBased: Boolean = false,
+    /** Grimmory's ID of the audio file; known once the detail was fetched. */
+    val bookFileId: String? = null,
+)
+
+/**
+ * One audio file of a book, positioned on the book's continuous timeline.
+ * Single-file books have exactly one track starting at 0.
+ */
+@Entity(
+    tableName = "tracks",
+    primaryKeys = ["bookId", "index"],
+)
+data class TrackEntity(
+    val bookId: String,
+    val index: Int,
+    val title: String?,
+    val fileName: String?,
+    val startMs: Long,
+    val durationMs: Long,
+    val sizeBytes: Long?,
 )
 
 @Entity(
@@ -83,7 +108,10 @@ data class ProgressEntity(
     val dirty: Boolean = false,
 )
 
-/** Tracks a locally downloaded audio file for offline playback (Phase 4). */
+/**
+ * Tracks a book downloaded for offline playback. [localPath] is the book's
+ * download directory, holding one file per track.
+ */
 @Entity(tableName = "downloads")
 data class DownloadEntity(
     @PrimaryKey val bookId: String,
@@ -94,9 +122,11 @@ data class DownloadEntity(
 )
 
 /**
- * A bookmark, keyed by the same UUID as the server so records reconcile 1:1.
- * [dirty] marks an unsynced local create/update to push; [deleted] is a
- * tombstone for a locally-deleted bookmark whose deletion still needs pushing.
+ * A bookmark. Once synced, [id] is Grimmory's numeric bookmark ID; a bookmark
+ * created offline carries a temporary client UUID until sync creates it on the
+ * server and re-keys the row. [dirty] marks an unsynced local create/update to
+ * push; [deleted] is a tombstone for a locally-deleted bookmark whose deletion
+ * still needs pushing.
  */
 @Entity(
     tableName = "bookmarks",

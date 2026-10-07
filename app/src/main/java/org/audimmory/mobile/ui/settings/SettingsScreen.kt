@@ -230,7 +230,7 @@ private fun ThemeModeRow(
     ) {
         Text("Theme", style = MaterialTheme.typography.bodyLarge)
         Text(
-            "Choose how Pageless should look on this device.",
+            "Choose how Audimmory should look on this device.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

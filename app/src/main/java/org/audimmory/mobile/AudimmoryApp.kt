@@ -6,8 +6,8 @@ import androidx.work.Configuration
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import dagger.hilt.android.HiltAndroidApp
-import org.audimmory.mobile.data.sync.SyncScheduler
 import okhttp3.OkHttpClient
+import org.audimmory.mobile.data.sync.SyncScheduler
 import javax.inject.Inject
 
 @HiltAndroidApp

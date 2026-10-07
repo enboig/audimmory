@@ -17,7 +17,7 @@ fun CollectionDetailScreen(
     val books by viewModel.books.collectAsStateWithLifecycle()
 
     BookGridDetail(
-        title = collection?.name ?: "Collection",
+        title = collection?.name ?: "Shelf",
         emptyText = "This collection is empty.",
         books = books.map { DetailBook(it.id, it.title, it.author, it.coverUrl) },
         onBack = onBack,

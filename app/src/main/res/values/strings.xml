@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Pageless</string>
+    <string name="app_name">Audimmory</string>
 
     <!--
       Media notification / lock-screen transport actions. These replace Media3's

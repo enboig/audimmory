@@ -148,4 +148,4 @@ fun AccountScreen(
     }
 }
 
-private const val GITHUB_URL = "https://github.com/dcaixinha/pageless-mobile"
+private const val GITHUB_URL = "https://github.com/enboig/audimmory"

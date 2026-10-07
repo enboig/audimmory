@@ -8,19 +8,20 @@ import org.audimmory.mobile.data.local.CollectionDao
 import org.audimmory.mobile.data.local.CollectionEntity
 import org.audimmory.mobile.data.local.MemberCoverRow
 import org.audimmory.mobile.data.remote.CollectionDto
-import org.audimmory.mobile.data.remote.PagelessApi
+import org.audimmory.mobile.data.remote.GrimmoryClient
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Offline-first browse access to collections (library-scoped, shared). The UI
- * observes Room; [refresh] pulls from the server. Read-only on mobile.
+ * Offline-first browse access to collections, which are Grimmory **shelves**
+ * (only their audiobooks are kept). The UI observes Room; [refresh] pulls from
+ * the server. Read-only on mobile.
  */
 @Singleton
 class CollectionRepository
     @Inject
     constructor(
-        private val api: PagelessApi,
+        private val client: GrimmoryClient,
         private val collectionDao: CollectionDao,
         private val bookDao: BookDao,
         private val cacheCoordinator: CacheCoordinator,
@@ -40,7 +41,7 @@ class CollectionRepository
             val result =
                 runCatching {
                     cacheCoordinator.exclusive {
-                        val collections = api.collections().collections
+                        val collections = client.collections()
                         val books = collections.flatMap { it.books }.distinctBy { it.id }
                         bookDao.upsertAll(books.map { it.toEntity(bookDao.get(it.id)) })
 
@@ -64,7 +65,7 @@ class CollectionRepository
         }
 
         suspend fun refresh(id: String): Result<Unit> {
-            val result = runCatching { cacheCoordinator.exclusive { cache(api.collection(id).collection) } }
+            val result = runCatching { cacheCoordinator.exclusive { cache(client.collection(id)) } }
             result
                 .onSuccess { connectionStatusRepository.markServerSuccess() }
                 .onFailure { connectionStatusRepository.markServerFailure() }

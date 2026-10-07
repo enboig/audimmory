@@ -40,7 +40,7 @@ class DownloadWorker
 
         override suspend fun doWork(): Result {
             val bookId = bookId ?: return Result.failure()
-            val file = downloader.fileFor(bookId)
+            val dir = downloader.dirFor(bookId)
 
             // Show the ongoing notification up front (indeterminate until first tick).
             setForeground(foregroundInfo(percent = null))
@@ -63,7 +63,8 @@ class DownloadWorker
             var rowPersisted = false
 
             var terminal: Result? = null
-            downloader.download(bookId).collect { p ->
+            val tracks = libraryRepository.getTracks(bookId)
+            downloader.download(bookId, book.folderBased, tracks).collect { p ->
                 when (p) {
                     is DownloadProgress.Running -> {
                         val pct = p.fraction?.let { (it * 100).toInt() } ?: -1
@@ -76,7 +77,7 @@ class DownloadWorker
                             lastPercent = pct
                             rowPersisted = true
                             downloadDao.upsert(
-                                DownloadEntity(bookId, file.absolutePath, "audio/mp4", p.totalBytes, completed = false),
+                                DownloadEntity(bookId, dir.absolutePath, null, p.totalBytes, completed = false),
                             )
                             setProgress(workDataOf(KEY_PROGRESS to pct))
                             setForeground(foregroundInfo(percent = pct.takeIf { it >= 0 }))
@@ -85,7 +86,7 @@ class DownloadWorker
 
                     is DownloadProgress.Completed -> {
                         downloadDao.upsert(
-                            DownloadEntity(bookId, p.file.absolutePath, "audio/mp4", p.bytes, completed = true),
+                            DownloadEntity(bookId, p.dir.absolutePath, null, p.bytes, completed = true),
                         )
                         DownloadNotifications.completed(appContext, bookId, title)
                         terminal = Result.success()
@@ -105,6 +106,9 @@ class DownloadWorker
             return if (runAttemptCount < MAX_ATTEMPTS) {
                 Result.retry()
             } else {
+                // Retries keep finished tracks so they resume; giving up must not
+                // strand them in storage the app no longer tracks.
+                downloader.delete(bookId)
                 DownloadNotifications.failed(appContext, bookId, title)
                 Result.failure()
             }

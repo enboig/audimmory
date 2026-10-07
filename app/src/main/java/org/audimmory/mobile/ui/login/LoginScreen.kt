@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,7 +59,7 @@ fun LoginScreen(
             Brand()
 
             Text(
-                "Sign in to your server",
+                "Sign in to your Grimmory server",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
@@ -74,11 +73,11 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = state.email,
-                onValueChange = viewModel::onEmailChange,
-                label = { Text("Email") },
+                value = state.username,
+                onValueChange = viewModel::onUsernameChange,
+                label = { Text("Username") },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
@@ -106,14 +105,6 @@ fun LoginScreen(
                     Text("Sign in")
                 }
             }
-
-            OutlinedButton(
-                onClick = viewModel::useDemoServer,
-                enabled = !state.loading,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Use demo server")
-            }
         }
 
         PrivacyPolicyLink(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -135,7 +126,7 @@ private fun Brand() {
         )
         Spacer(Modifier.width(12.dp))
         Text(
-            "Pageless",
+            "Audimmory",
             style = MaterialTheme.typography.headlineMedium,
             fontFamily = JetBrainsMono,
             fontWeight = FontWeight.Bold,

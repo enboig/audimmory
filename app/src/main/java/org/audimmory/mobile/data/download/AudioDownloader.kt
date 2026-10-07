@@ -7,10 +7,12 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import org.audimmory.mobile.data.local.SessionStore
-import org.audimmory.mobile.data.remote.bookDownloadUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.audimmory.mobile.data.local.SessionStore
+import org.audimmory.mobile.data.local.TrackEntity
+import org.audimmory.mobile.data.remote.audiobookStreamUrl
+import org.audimmory.mobile.data.remote.audiobookTrackUrl
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
@@ -23,11 +25,12 @@ sealed interface DownloadProgress {
         val bytesRead: Long,
         val totalBytes: Long?,
     ) : DownloadProgress {
-        val fraction: Float? = totalBytes?.takeIf { it > 0 }?.let { (bytesRead.toFloat() / it) }
+        // Server-reported sizes can be slightly off (e.g. metadata rewritten after scanning).
+        val fraction: Float? = totalBytes?.takeIf { it > 0 }?.let { (bytesRead.toFloat() / it).coerceAtMost(1f) }
     }
 
     data class Completed(
-        val file: File,
+        val dir: File,
         val bytes: Long,
     ) : DownloadProgress
 
@@ -37,11 +40,16 @@ sealed interface DownloadProgress {
 }
 
 /**
- * Streams a book's `.m4b` from the server to app-private storage.
+ * Streams a book's audio from Grimmory to app-private storage.
  *
- * Auth and base-URL rewriting are handled by the shared OkHttp interceptors, so
- * this just builds the download path and writes the body to disk, emitting
- * progress. Cancellation deletes the partial file.
+ * Every book gets its own directory holding one file per track, named
+ * `<trackIndex>.<extension>`: a single-file book (m4b, m4a, mp3, opus) has
+ * just `0.m4b` or similar, a folder-based book has `0.mp3`, `1.mp3`, ….
+ * Tracks already on disk at their expected size are skipped, so a retried
+ * download resumes at the first missing track.
+ *
+ * Auth and base-URL rewriting are handled by the shared OkHttp interceptors.
+ * Cancellation deletes only the partial file of the track in progress.
  */
 @Singleton
 class AudioDownloader
@@ -54,33 +62,57 @@ class AudioDownloader
         private val downloadsDir: File
             get() = File(context.filesDir, AUDIO_DIR_NAME).apply { mkdirs() }
 
-        fun fileFor(bookId: String): File = File(downloadsDir, "$bookId.m4b")
+        fun dirFor(bookId: String): File = File(downloadsDir, bookId)
 
-        fun download(bookId: String): Flow<DownloadProgress> =
+        /** Downloaded track files by track index; partial files are excluded. */
+        fun trackFiles(bookId: String): Map<Int, File> =
+            dirFor(bookId)
+                .listFiles()
+                .orEmpty()
+                .filter { it.isFile && !it.name.endsWith(PART_SUFFIX) }
+                .mapNotNull { file ->
+                    file.name
+                        .substringBefore('.')
+                        .toIntOrNull()
+                        ?.let { it to file }
+                }.toMap()
+
+        fun download(
+            bookId: String,
+            folderBased: Boolean,
+            tracks: List<TrackEntity>,
+        ): Flow<DownloadProgress> =
             flow {
                 val baseUrl = sessionStore.currentServerUrl()
-                val url = bookDownloadUrl(baseUrl, bookId)
-                val target = fileFor(bookId)
-                val tmp = File(target.absolutePath + ".part")
+                val dir = dirFor(bookId).apply { mkdirs() }
+                val ordered = tracks.sortedBy { it.index }.ifEmpty { listOf(TrackEntity(bookId, 0, null, null, 0, 0, null)) }
+                val total = ordered.sumOf { it.sizeBytes ?: 0 }.takeIf { size -> ordered.all { it.sizeBytes != null } && size > 0 }
+                var readTotal = 0L
+                var partial: File? = null
 
                 try {
-                    val response = client.newCall(Request.Builder().url(url).build()).execute()
-                    response.use {
-                        if (!it.isSuccessful) throw IOException("HTTP ${it.code}")
-                        val body = it.body ?: throw IOException("empty body")
-                        val total = body.contentLength().takeIf { len -> len > 0 }
+                    for (track in ordered) {
+                        val target = File(dir, "${track.index}.${extensionFor(track.fileName)}")
+                        if (target.exists() && track.sizeBytes != null && target.length() == track.sizeBytes) {
+                            readTotal += target.length()
+                            continue
+                        }
+                        val url = if (folderBased) audiobookTrackUrl(baseUrl, bookId, track.index) else audiobookStreamUrl(baseUrl, bookId)
+                        val tmp = File(target.absolutePath + PART_SUFFIX).also { partial = it }
 
-                        body.byteStream().use { input ->
-                            tmp.outputStream().use { output ->
-                                val buffer = ByteArray(64 * 1024)
-                                var readTotal = 0L
-                                while (true) {
-                                    coroutineContext.ensureActive()
-                                    val read = input.read(buffer)
-                                    if (read == -1) break
-                                    output.write(buffer, 0, read)
-                                    readTotal += read
-                                    emit(DownloadProgress.Running(readTotal, total))
+                        client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+                            (response.body ?: throw IOException("empty body")).byteStream().use { input ->
+                                tmp.outputStream().use { output ->
+                                    val buffer = ByteArray(64 * 1024)
+                                    while (true) {
+                                        coroutineContext.ensureActive()
+                                        val read = input.read(buffer)
+                                        if (read == -1) break
+                                        output.write(buffer, 0, read)
+                                        readTotal += read
+                                        emit(DownloadProgress.Running(readTotal, total))
+                                    }
                                 }
                             }
                         }
@@ -89,17 +121,18 @@ class AudioDownloader
                             tmp.copyTo(target, overwrite = true)
                             tmp.delete()
                         }
-                        emit(DownloadProgress.Completed(target, target.length()))
+                        partial = null
                     }
+                    emit(DownloadProgress.Completed(dir, dir.walkBottomUp().filter { it.isFile }.sumOf { it.length() }))
                 } catch (t: Throwable) {
-                    tmp.delete()
+                    partial?.delete()
                     if (t is kotlinx.coroutines.CancellationException) throw t
                     emit(DownloadProgress.Failed(t))
                 }
             }.flowOn(Dispatchers.IO)
 
         fun delete(bookId: String) {
-            fileFor(bookId).delete()
+            dirFor(bookId).deleteRecursively()
         }
 
         /**
@@ -120,4 +153,15 @@ class AudioDownloader
          * deliberately does not.
          */
         fun cancelNotifications() = DownloadNotifications.cancelAll(context)
+
+        private fun extensionFor(fileName: String?): String =
+            fileName
+                ?.substringAfterLast('.', "")
+                ?.lowercase()
+                ?.takeIf { it.isNotEmpty() && it.length <= 5 && it.all(Char::isLetterOrDigit) }
+                ?: "audio"
+
+        private companion object {
+            const val PART_SUFFIX = ".part"
+        }
     }

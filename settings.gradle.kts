@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Pageless"
+rootProject.name = "Audimmory"
 include(":app")

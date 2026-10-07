@@ -44,7 +44,7 @@ fun AppDrawerContent(
     ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
-                text = username?.let { "Welcome, $it" } ?: "Pageless",
+                text = username?.let { "Welcome, $it" } ?: "Audimmory",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(16.dp),
@@ -69,7 +69,7 @@ fun AppDrawerContent(
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
             NavigationDrawerItem(
-                label = { Text("Collections") },
+                label = { Text("Shelves") },
                 icon = { Icon(Icons.Default.GridView, contentDescription = null) },
                 selected = false,
                 colors = itemColors,
@@ -77,7 +77,7 @@ fun AppDrawerContent(
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
             NavigationDrawerItem(
-                label = { Text("Playlists") },
+                label = { Text("Magic shelves") },
                 icon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
                 selected = false,
                 colors = itemColors,

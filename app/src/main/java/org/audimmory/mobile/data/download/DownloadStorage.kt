@@ -2,7 +2,7 @@ package org.audimmory.mobile.data.download
 
 import java.io.File
 
-/** Subdirectory of `filesDir` holding downloaded `.m4b` files. */
+/** Subdirectory of `filesDir` holding downloaded audio, one directory per book. */
 internal const val AUDIO_DIR_NAME = "audiobooks"
 
 /** Subdirectory of `filesDir` holding cached cover images. */

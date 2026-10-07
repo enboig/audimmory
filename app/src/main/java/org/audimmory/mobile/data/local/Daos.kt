@@ -17,6 +17,7 @@ data class MemberCoverRow(
     val position: Int,
     val bookId: String,
     val hasCover: Boolean,
+    val audiobookCover: Boolean,
     val coverLocalPath: String?,
     val coverUpdatedAt: String?,
     val updatedAt: String?,
@@ -118,6 +119,27 @@ interface ChapterDao {
 }
 
 @Dao
+interface TrackDao {
+    @Query("SELECT * FROM tracks WHERE bookId = :bookId ORDER BY `index`")
+    suspend fun forBook(bookId: String): List<TrackEntity>
+
+    @Query("DELETE FROM tracks WHERE bookId = :bookId")
+    suspend fun deleteForBook(bookId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(tracks: List<TrackEntity>)
+
+    @Transaction
+    suspend fun replaceForBook(
+        bookId: String,
+        tracks: List<TrackEntity>,
+    ) {
+        deleteForBook(bookId)
+        insertAll(tracks)
+    }
+}
+
+@Dao
 interface ProgressDao {
     @Query("SELECT * FROM progress")
     fun observeAll(): Flow<List<ProgressEntity>>
@@ -130,6 +152,9 @@ interface ProgressDao {
 
     @Query("SELECT * FROM progress WHERE dirty = 1")
     suspend fun dirty(): List<ProgressEntity>
+
+    @Query("SELECT bookId FROM progress ORDER BY lastPlayedAt DESC LIMIT :limit")
+    suspend fun recentBookIds(limit: Int): List<String>
 
     @Upsert
     suspend fun upsert(progress: ProgressEntity)
@@ -173,6 +198,22 @@ interface BookmarkDao {
     @Query("SELECT * FROM bookmarks WHERE id = :id")
     suspend fun get(id: String): BookmarkEntity?
 
+    @Query("SELECT * FROM bookmarks WHERE bookId = :bookId")
+    suspend fun allForBook(bookId: String): List<BookmarkEntity>
+
+    @Query("SELECT DISTINCT bookId FROM bookmarks")
+    suspend fun bookIds(): List<String>
+
+    /** Replaces a locally-keyed bookmark with its server-keyed copy. */
+    @Transaction
+    suspend fun rekey(
+        oldId: String,
+        synced: BookmarkEntity,
+    ) {
+        hardDelete(oldId)
+        upsert(synced)
+    }
+
     @Upsert
     suspend fun upsert(bookmark: BookmarkEntity)
 
@@ -213,7 +254,7 @@ interface SeriesDao {
     @Query(
         """
         SELECT sb.seriesId AS parentId, sb.position AS position,
-               b.id AS bookId, b.hasCover AS hasCover,
+               b.id AS bookId, b.hasCover AS hasCover, b.audiobookCover AS audiobookCover,
                b.coverLocalPath AS coverLocalPath, b.coverUpdatedAt AS coverUpdatedAt,
                b.updatedAt AS updatedAt
         FROM series_books sb
@@ -242,6 +283,24 @@ interface SeriesDao {
         deleteMembers(seriesId)
         insertMembers(members)
     }
+
+    @Query("DELETE FROM series_books")
+    suspend fun deleteAllMembers()
+
+    @Query("DELETE FROM series")
+    suspend fun deleteAll()
+
+    /** Series are derived from the book list, so a refresh replaces them all. */
+    @Transaction
+    suspend fun replaceAll(
+        series: List<SeriesEntity>,
+        members: List<SeriesBookEntity>,
+    ) {
+        deleteAllMembers()
+        deleteAll()
+        upsertAll(series)
+        insertMembers(members)
+    }
 }
 
 @Dao
@@ -268,7 +327,7 @@ interface CollectionDao {
     @Query(
         """
         SELECT cb.collectionId AS parentId, cb.position AS position,
-               b.id AS bookId, b.hasCover AS hasCover,
+               b.id AS bookId, b.hasCover AS hasCover, b.audiobookCover AS audiobookCover,
                b.coverLocalPath AS coverLocalPath, b.coverUpdatedAt AS coverUpdatedAt,
                b.updatedAt AS updatedAt
         FROM collection_books cb
@@ -340,7 +399,7 @@ interface PlaylistDao {
     @Query(
         """
         SELECT pb.playlistId AS parentId, pb.position AS position,
-               b.id AS bookId, b.hasCover AS hasCover,
+               b.id AS bookId, b.hasCover AS hasCover, b.audiobookCover AS audiobookCover,
                b.coverLocalPath AS coverLocalPath, b.coverUpdatedAt AS coverUpdatedAt,
                b.updatedAt AS updatedAt
         FROM playlist_books pb
@@ -404,6 +463,9 @@ interface PlaybackHistoryDao {
 
     @Query("SELECT * FROM playback_events WHERE dirty = 1")
     suspend fun dirtyEvents(): List<PlaybackEventEntity>
+
+    @Query("SELECT * FROM playback_events WHERE sessionId = :sessionId")
+    suspend fun eventsForSession(sessionId: String): List<PlaybackEventEntity>
 
     @Upsert
     suspend fun upsertSession(session: PlaybackSessionEntity)

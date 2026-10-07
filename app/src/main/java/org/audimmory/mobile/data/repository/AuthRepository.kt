@@ -1,6 +1,5 @@
 package org.audimmory.mobile.data.repository
 
-import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -9,9 +8,8 @@ import org.audimmory.mobile.data.download.AudioDownloader
 import org.audimmory.mobile.data.download.CoverCache
 import org.audimmory.mobile.data.local.AudimmoryDatabase
 import org.audimmory.mobile.data.local.SessionStore
-import org.audimmory.mobile.data.remote.LoginRequest
-import org.audimmory.mobile.data.remote.MeResponse
-import org.audimmory.mobile.data.remote.PagelessApi
+import org.audimmory.mobile.data.remote.AccountDto
+import org.audimmory.mobile.data.remote.GrimmoryClient
 import org.audimmory.mobile.data.sync.SyncScheduler
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,7 +18,7 @@ import javax.inject.Singleton
 class AuthRepository
     @Inject
     constructor(
-        private val api: PagelessApi,
+        private val client: GrimmoryClient,
         private val database: AudimmoryDatabase,
         private val cacheCoordinator: CacheCoordinator,
         private val sessionStore: SessionStore,
@@ -33,23 +31,24 @@ class AuthRepository
     ) {
         val token: Flow<String?> = sessionStore.token
         val serverUrl: Flow<String> = sessionStore.serverUrl
-        val email: Flow<String?> = sessionStore.email
+        val username: Flow<String?> = sessionStore.username
+        val canDownload: Flow<Boolean> = sessionStore.canDownload
         val ignorePrefixesWhenSorting: Flow<Boolean> = sessionStore.ignorePrefixesWhenSorting
         val dateFormat: Flow<String> = sessionStore.dateFormat
         val timeFormat: Flow<String> = sessionStore.timeFormat
         val displayName: Flow<String?> =
-            combine(sessionStore.firstName, sessionStore.email) { firstName, email ->
-                firstName?.takeIf { it.isNotBlank() } ?: email
+            combine(sessionStore.displayName, sessionStore.username) { name, username ->
+                name?.takeIf { it.isNotBlank() } ?: username
             }
 
         /**
-         * Logs in against [serverUrl] and persists the returned token. The URL is
-         * saved first so the [org.audimmory.mobile.data.remote.BaseUrlInterceptor]
+         * Logs in against [serverUrl] and persists the returned tokens. The URL
+         * is saved first so the [org.audimmory.mobile.data.remote.BaseUrlInterceptor]
          * targets the right host for the login call.
          */
         suspend fun login(
             serverUrl: String,
-            email: String,
+            username: String,
             password: String,
         ): Result<Unit> {
             val result =
@@ -59,17 +58,11 @@ class AuthRepository
                             clearLocalContent()
                         }
                         sessionStore.setServerUrl(serverUrl.trim())
-                        val device = "${Build.MANUFACTURER} ${Build.MODEL}".trim().ifEmpty { "Android device" }
-                        val response = api.login(LoginRequest(email.trim(), password, device))
-                        sessionStore.saveSession(
-                            response.token,
-                            response.user.email,
-                            response.user.firstName,
-                            serverUrl.trim(),
-                            response.user.ignorePrefixesWhenSorting,
-                            response.user.dateFormat,
-                            response.user.timeFormat,
-                        )
+                        val tokens = client.login(username.trim(), password)
+                        sessionStore.saveSession(tokens.accessToken, tokens.refreshToken, serverUrl.trim())
+                        // Without the account the app cannot know the download permission.
+                        runCatching { saveAccount(client.me()) }
+                            .onFailure { sessionStore.setAccount(username.trim(), username.trim(), canDownload = false) }
                     }
                     syncScheduler.schedulePeriodic()
                     syncScheduler.enqueueNow()
@@ -80,20 +73,16 @@ class AuthRepository
             return result
         }
 
-        suspend fun refreshCurrentUser(): Result<MeResponse> =
-            runCatching {
-                val response = api.me()
-                sessionStore.setUserPreferences(
-                    response.user.ignorePrefixesWhenSorting,
-                    response.user.dateFormat,
-                    response.user.timeFormat,
-                )
-                response
-            }
+        /** Re-reads the account (name, download permission) from the server. */
+        suspend fun refreshCurrentUser(): Result<AccountDto> = runCatching { client.me().also { saveAccount(it) } }
+
+        private suspend fun saveAccount(account: AccountDto) {
+            sessionStore.setAccount(account.username, account.displayName, account.canDownload)
+        }
 
         suspend fun logout() {
             cacheCoordinator.exclusive {
-                runCatching { api.logout() }
+                runCatching { client.logout(sessionStore.currentRefreshToken()) }
                 syncScheduler.cancelAll()
                 sessionStore.clear()
                 clearLocalContent()
@@ -102,7 +91,7 @@ class AuthRepository
 
         /**
          * Drops everything the signed-out account left on the device: the Room
-         * cache, downloaded `.m4b` files and cached covers.
+         * cache, downloaded audio and cached covers.
          *
          * The files matter as much as the rows. Clearing only the database leaves
          * the audio and artwork of the previous account readable by anyone who

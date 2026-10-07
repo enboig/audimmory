@@ -75,8 +75,8 @@ import org.audimmory.mobile.core.DateTimeFormat
 import org.audimmory.mobile.core.TimeFormat
 import org.audimmory.mobile.data.local.BookmarkEntity
 import org.audimmory.mobile.data.local.ProgressEntity
-import org.audimmory.mobile.ui.components.ConnectionStatusIcon
 import org.audimmory.mobile.ui.components.AudimmoryRefreshIndicator
+import org.audimmory.mobile.ui.components.ConnectionStatusIcon
 import org.audimmory.mobile.ui.library.LibraryFilterCategory
 import java.time.ZoneId
 
@@ -94,6 +94,7 @@ fun BookDetailScreen(
     val chapters by viewModel.chapters.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val downloadStatus by viewModel.downloadStatus.collectAsStateWithLifecycle()
+    val canDownload by viewModel.canDownload.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val player by viewModel.playerState.collectAsStateWithLifecycle()
     val playerSettings by viewModel.playerSettings.collectAsStateWithLifecycle()
@@ -275,6 +276,7 @@ fun BookDetailScreen(
 
                     item {
                         DownloadControl(
+                            allowed = canDownload,
                             completed = downloadStatus.completed,
                             downloading = downloadStatus.running,
                             fraction = downloadStatus.progressPercent?.let { it / 100f },
@@ -303,11 +305,11 @@ fun BookDetailScreen(
                                 },
                             ) { onOpenLibraryFilter(LibraryFilterCategory.SERIES, it) }
                             MetadataLinksRow(
-                                "Collections",
+                                "Shelves",
                                 filterMetadata[LibraryFilterCategory.COLLECTIONS].orEmpty(),
                             ) { onOpenLibraryFilter(LibraryFilterCategory.COLLECTIONS, it) }
                             MetadataLinksRow(
-                                "Playlists",
+                                "Magic shelves",
                                 filterMetadata[LibraryFilterCategory.PLAYLISTS].orEmpty(),
                             ) { onOpenLibraryFilter(LibraryFilterCategory.PLAYLISTS, it) }
                             MetadataLinksRow(
@@ -819,6 +821,7 @@ private fun groupedBookmarks(
 
 @Composable
 private fun DownloadControl(
+    allowed: Boolean,
     completed: Boolean,
     downloading: Boolean,
     fraction: Float?,
@@ -876,6 +879,15 @@ private fun DownloadControl(
                     }
                     TextButton(onClick = onDelete) { Text("Remove") }
                 }
+            }
+
+            // Grimmory's "download" permission also governs offline copies.
+            !allowed -> {
+                Text(
+                    "Offline download is not enabled for your Grimmory account.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             else -> {

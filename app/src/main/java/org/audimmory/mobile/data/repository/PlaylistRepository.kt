@@ -7,20 +7,21 @@ import org.audimmory.mobile.data.local.MemberCoverRow
 import org.audimmory.mobile.data.local.PlaylistBookEntity
 import org.audimmory.mobile.data.local.PlaylistDao
 import org.audimmory.mobile.data.local.PlaylistEntity
-import org.audimmory.mobile.data.remote.PagelessApi
+import org.audimmory.mobile.data.remote.GrimmoryClient
 import org.audimmory.mobile.data.remote.PlaylistDto
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Offline-first browse access to the user's playlists. The UI observes Room;
- * [refresh] pulls from the server. Read-only on mobile.
+ * Offline-first browse access to playlists, which are Grimmory **magic
+ * shelves** (rule-based; only their audiobooks are kept). The UI observes
+ * Room; [refresh] pulls from the server. Read-only on mobile.
  */
 @Singleton
 class PlaylistRepository
     @Inject
     constructor(
-        private val api: PagelessApi,
+        private val client: GrimmoryClient,
         private val playlistDao: PlaylistDao,
         private val bookDao: BookDao,
         private val cacheCoordinator: CacheCoordinator,
@@ -40,7 +41,7 @@ class PlaylistRepository
             val result =
                 runCatching {
                     cacheCoordinator.exclusive {
-                        val playlists = api.playlists().playlists
+                        val playlists = client.playlists()
                         val books = playlists.flatMap { it.books }.distinctBy { it.id }
                         bookDao.upsertAll(books.map { it.toEntity(bookDao.get(it.id)) })
 
@@ -61,7 +62,7 @@ class PlaylistRepository
         }
 
         suspend fun refresh(id: String): Result<Unit> {
-            val result = runCatching { cacheCoordinator.exclusive { cache(api.playlist(id).playlist) } }
+            val result = runCatching { cacheCoordinator.exclusive { cache(client.playlist(id)) } }
             result
                 .onSuccess { connectionStatusRepository.markServerSuccess() }
                 .onFailure { connectionStatusRepository.markServerFailure() }

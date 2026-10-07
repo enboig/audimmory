@@ -127,11 +127,14 @@ class DownloadRepository
             downloadDao.delete(bookId)
         }
 
-        /** Local path if the book is fully downloaded, else null. */
-        suspend fun localPathIfComplete(bookId: String): String? =
-            downloadDao
-                .get(bookId)
-                ?.takeIf { it.completed }
-                ?.localPath
-                ?.takeIf { File(it).exists() }
+/**
+         * Downloaded track files by track index when the book is fully
+         * downloaded, else an empty map. Partial downloads are never played,
+         * so a book is either entirely local or entirely streamed.
+         */
+        suspend fun localTrackFiles(bookId: String): Map<Int, File> {
+            val download = downloadDao.get(bookId)?.takeIf { it.completed } ?: return emptyMap()
+            if (!File(download.localPath).isDirectory) return emptyMap()
+            return downloader.trackFiles(bookId)
+        }
     }

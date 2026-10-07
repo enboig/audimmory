@@ -3,7 +3,7 @@ package org.audimmory.mobile.core
 /**
  * Pure singular/plural noun counting.
  *
- * DUPLICATED FROM SERVER — keep in sync with `Pageless.Format.count/2,3`.
+ * Inherited from Pageless (mirrored its server's `Pageless.Format.count/2,3`).
  */
 object Plural {
     /**

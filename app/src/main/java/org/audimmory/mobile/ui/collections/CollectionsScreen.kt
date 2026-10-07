@@ -32,9 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.audimmory.mobile.core.Plural
+import org.audimmory.mobile.ui.components.AudimmoryRefreshIndicator
 import org.audimmory.mobile.ui.components.ConnectionStatusIcon
 import org.audimmory.mobile.ui.components.MosaicTile
-import org.audimmory.mobile.ui.components.AudimmoryRefreshIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +52,7 @@ fun CollectionsScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (tiles.isEmpty()) "Collections" else "Collections · ${tiles.size}")
+                        Text(if (tiles.isEmpty()) "Shelves" else "Shelves · ${tiles.size}")
                         Spacer(Modifier.width(8.dp))
                         ConnectionStatusIcon()
                     }

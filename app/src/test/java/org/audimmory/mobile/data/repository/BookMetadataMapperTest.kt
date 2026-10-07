@@ -29,7 +29,6 @@ class BookMetadataMapperTest {
                 language = "English",
                 size = 1234,
                 addedAt = "2025-01-01T00:00:00Z",
-                fileModified = "2024-01-01T00:00:00Z",
             )
 
         assertEquals("Primary Reader, Doe, Jane", dto.toEntity().narrators)
@@ -55,5 +54,39 @@ class BookMetadataMapperTest {
             )
 
         assertEquals("Publisher", dto.toEntity().publisher)
+    }
+
+    @Test
+    fun `summary refresh keeps duration and audio layout from a cached detail`() {
+        val existing =
+            BookDetailDto(
+                id = "book",
+                title = "Book",
+                durationSeconds = 90.0,
+                folderBased = true,
+                bookFileId = "7",
+            ).toEntity()
+
+        val refreshed = BookSummaryDto(id = "book", title = "Book").toEntity(existing)
+
+        assertEquals(90.0, refreshed.durationSeconds, 0.0)
+        assertEquals(true, refreshed.folderBased)
+        assertEquals("7", refreshed.bookFileId)
+    }
+
+    @Test
+    fun `series are derived from books and ordered by sequence`() {
+        val books =
+            listOf(
+                BookSummaryDto(id = "b", title = "Second", series = listOf(SeriesRefDto("Saga", "Saga", "2"))),
+                BookSummaryDto(id = "a", title = "First", series = listOf(SeriesRefDto("Saga", "Saga", "1"))),
+                BookSummaryDto(id = "c", title = "Loose"),
+            )
+
+        val (series, members) = seriesFrom(books)
+
+        assertEquals(listOf("Saga"), series.map { it.id })
+        assertEquals(listOf("a", "b"), members.sortedBy { it.position }.map { it.bookId })
+        assertEquals(listOf("1", "2"), members.sortedBy { it.position }.map { it.sequence })
     }
 }

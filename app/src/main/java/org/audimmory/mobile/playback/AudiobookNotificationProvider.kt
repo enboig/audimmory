@@ -60,7 +60,7 @@ class AudiobookNotificationProvider(
         byAction[JumpControls.ACTION_JUMP_FORWARD]?.let { buttons.add(it) }
 
         // Anything else the session asked for keeps the superclass' trailing
-        // placement. Pageless publishes no other custom buttons today.
+        // placement. The app publishes no other custom buttons today.
         mediaButtonPreferences
             .filter { it.sessionCommand?.customAction !in JUMP_ACTIONS }
             .forEach { buttons.add(it) }

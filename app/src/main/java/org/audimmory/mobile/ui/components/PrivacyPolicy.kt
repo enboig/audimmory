@@ -27,13 +27,12 @@ import androidx.compose.ui.unit.dp
 /**
  * Canonical location of the published privacy policy.
  *
- * The page is generated from `docs/privacy/privacy-policy.md` in this
- * repository, so the wording users read is the wording in version control. It
- * is deliberately *not* duplicated into the app: bundled policy text drifts
- * from the published page, and the published page is the one Google Play and
- * the store listing point at.
+ * It is `docs/privacy/privacy-policy.md` in this repository, rendered by
+ * GitHub, so the wording users read is the wording in version control. It is
+ * deliberately *not* duplicated into the app: bundled policy text drifts from
+ * the published page.
  */
-const val PRIVACY_POLICY_URL = "https://pageless.live/privacy"
+const val PRIVACY_POLICY_URL = "https://github.com/enboig/audimmory/blob/master/docs/privacy/privacy-policy.md"
 
 /**
  * Opens [PRIVACY_POLICY_URL] in whatever browser the user has.

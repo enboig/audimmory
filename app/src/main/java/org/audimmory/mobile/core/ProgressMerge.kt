@@ -1,13 +1,13 @@
 package org.audimmory.mobile.core
 
 /**
- * Pure last-write-wins merge for playback progress, mirroring the server's
- * `Pageless.Playback.upsert_progress/3` conflict rule (newer `lastPlayedAt`
- * wins). Kept pure so it is unit-testable without Room/network.
+ * Pure last-write-wins merge for playback progress: the newer `lastPlayedAt`
+ * wins. Kept pure so it is unit-testable without Room/network.
  *
- * Timestamps are compared as ISO-8601 strings; because ISO-8601 UTC timestamps
- * are lexicographically ordered by time, string comparison is sufficient when
- * both sides are produced in UTC (as the server and this app both are).
+ * Timestamps are compared as instants. Plain string comparison is not enough:
+ * Grimmory and `Instant.toString()` emit different fractional-second
+ * precisions, and `"…:22Z"` sorts after `"…:22.787Z"` as text even though it is
+ * earlier. Unparseable timestamps fall back to string comparison.
  */
 object ProgressMerge {
     interface Timestamped {
@@ -26,6 +26,8 @@ object ProgressMerge {
         if (current == null) return true
         val currentTs = current.lastPlayedAt ?: return true
         val incomingTs = incoming.lastPlayedAt ?: return false
-        return incomingTs >= currentTs
+        val currentMs = Iso8601.toEpochMillis(currentTs)
+        val incomingMs = Iso8601.toEpochMillis(incomingTs)
+        return if (currentMs != null && incomingMs != null) incomingMs >= currentMs else incomingTs >= currentTs
     }
 }

@@ -38,9 +38,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.audimmory.mobile.R
 import org.audimmory.mobile.data.repository.ShelfBook
+import org.audimmory.mobile.ui.components.AudimmoryRefreshIndicator
 import org.audimmory.mobile.ui.components.BookCard
 import org.audimmory.mobile.ui.components.ConnectionStatusIcon
-import org.audimmory.mobile.ui.components.AudimmoryRefreshIndicator
 import org.audimmory.mobile.ui.components.TopTab
 import org.audimmory.mobile.ui.components.TopTabs
 import org.audimmory.mobile.ui.theme.JetBrainsMono
@@ -70,7 +70,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Pageless",
+                                "Audimmory",
                                 fontFamily = JetBrainsMono,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -91,7 +91,7 @@ fun HomeScreen(
         val shelves = state.shelves
         val nothing =
             shelves.continueListening.isEmpty() &&
-                shelves.discover.isEmpty() &&
+                shelves.recentlyAdded.isEmpty() &&
                 shelves.listenAgain.isEmpty() &&
                 localBooks.isEmpty()
 
@@ -129,7 +129,7 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(20.dp),
                     ) {
                         shelfItem("Continue Listening", shelves.continueListening, onOpenBook)
-                        shelfItem("Discover", shelves.discover, onOpenBook)
+                        shelfItem("Recently added", shelves.recentlyAdded, onOpenBook)
                         shelfItem("Listen Again", shelves.listenAgain, onOpenBook)
                         shelfItem("Local Books", localBooks, onOpenBook)
                     }

@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Mirrors the server's `Pageless.Format` doctests and tests. */
+/** Originally mirrored the Pageless server's `Pageless.Format` doctests and tests. */
 class TimeFormatTest {
     @Test
     fun duration() {

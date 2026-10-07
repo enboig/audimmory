@@ -3,7 +3,7 @@ package org.audimmory.mobile.core
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Mirror of the server's `Pageless.Format.count/2,3` tests. */
+/** Originally mirrored the Pageless server's `Pageless.Format.count/2,3` tests. */
 class PluralTest {
     @Test
     fun pluralizes_for_any_count_other_than_one() {

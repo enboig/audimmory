@@ -27,8 +27,8 @@ class AccountViewModel
         private val serverVersion = MutableStateFlow<String?>(null)
 
         val state: StateFlow<AccountUiState> =
-            combine(authRepository.serverUrl, authRepository.email, serverVersion) { host, email, version ->
-                AccountUiState(host = host, username = email ?: "", serverVersion = version)
+            combine(authRepository.serverUrl, authRepository.username, serverVersion) { host, username, version ->
+                AccountUiState(host = host, username = username ?: "", serverVersion = version)
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountUiState())
 
         init {

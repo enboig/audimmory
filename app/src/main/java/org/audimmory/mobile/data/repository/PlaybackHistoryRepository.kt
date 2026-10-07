@@ -6,10 +6,7 @@ import org.audimmory.mobile.core.Iso8601
 import org.audimmory.mobile.data.local.PlaybackEventEntity
 import org.audimmory.mobile.data.local.PlaybackHistoryDao
 import org.audimmory.mobile.data.local.PlaybackSessionEntity
-import org.audimmory.mobile.data.remote.ListeningEventSyncDto
-import org.audimmory.mobile.data.remote.ListeningHistorySyncRequest
-import org.audimmory.mobile.data.remote.ListeningSessionSyncDto
-import org.audimmory.mobile.data.remote.PagelessApi
+import org.audimmory.mobile.data.remote.GrimmoryClient
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,7 +25,7 @@ class PlaybackHistoryRepository
     @Inject
     constructor(
         private val dao: PlaybackHistoryDao,
-        private val api: PagelessApi,
+        private val client: GrimmoryClient,
         private val connectionStatusRepository: ConnectionStatusRepository,
     ) {
         fun observeSessionsForBook(bookId: String): Flow<List<PlaybackSessionEntity>> = dao.observeSessionsForBook(bookId)
@@ -116,21 +113,35 @@ class PlaybackHistoryRepository
             )
         }
 
+        /**
+         * Sends listening to Grimmory as reading sessions.
+         *
+         * Grimmory records a reading session once, as a whole, while a local
+         * session stays open across pauses. So each stretch of listening — a
+         * "Play" event up to the "Pause" that ended it — is sent as one Grimmory
+         * session when its Pause event is synced. A Pause is only ever synced
+         * once, so nothing is recorded twice; an open stretch waits for its
+         * Pause. The other events and the local session rows have no Grimmory
+         * counterpart and stay on the device for the book history screen.
+         */
         suspend fun sync(): Result<Unit> {
-            val sessions = dao.dirtySessions()
             val events = dao.dirtyEvents()
+            val sessions = dao.dirtySessions()
             if (sessions.isEmpty() && events.isEmpty()) return Result.success(Unit)
 
             val result =
                 runCatching {
-                    api.syncListeningHistory(
-                        ListeningHistorySyncRequest(
-                            sessions = sessions.map { it.toSyncDto() },
-                            events = events.map { it.toSyncDto() },
-                        ),
-                    )
+                    for (pause in events.filter { it.event == "Pause" }.sortedBy { it.timestamp }) {
+                        val session = dao.getSession(pause.sessionId)
+                        val play = stretchStart(pause)
+                        if (session != null && play != null) {
+                            client.recordListeningStretch(session, play, pause)
+                        }
+                        dao.clearEventDirty(listOf(pause.id))
+                    }
+                    val others = events.filter { it.event != "Pause" }
+                    if (others.isNotEmpty()) dao.clearEventDirty(others.map { it.id })
                     if (sessions.isNotEmpty()) dao.clearSessionDirty(sessions.map { it.id })
-                    if (events.isNotEmpty()) dao.clearEventDirty(events.map { it.id })
                 }
 
             result
@@ -141,33 +152,15 @@ class PlaybackHistoryRepository
 
         private fun deviceInfo(): String = "Android ${Build.VERSION.RELEASE}\n${Build.MANUFACTURER} ${Build.MODEL}".trim()
 
-        private fun PlaybackSessionEntity.toSyncDto(): ListeningSessionSyncDto =
-            ListeningSessionSyncDto(
-                id = id,
-                bookId = bookId,
-                title = title,
-                authors = authors,
-                playMethod = playMethod,
-                deviceInfo = deviceInfo,
-                startedAt = startedAt,
-                updatedAt = updatedAt,
-                endedAt = endedAt,
-                timeListenedSeconds = timeListenedSeconds,
-                lastPositionSeconds = lastPositionSeconds,
-                durationSeconds = durationSeconds,
-            )
-
-        private fun PlaybackEventEntity.toSyncDto(): ListeningEventSyncDto =
-            ListeningEventSyncDto(
-                id = id,
-                sessionId = sessionId,
-                bookId = bookId,
-                event = event,
-                type = type,
-                positionSeconds = positionSeconds,
-                timestamp = timestamp,
-                serverSyncAttempted = serverSyncAttempted,
-                serverSyncSuccess = serverSyncSuccess,
-                serverSyncMessage = serverSyncMessage,
-            )
+        /** The latest "Play" of the same session before [pause], if any. */
+        private suspend fun stretchStart(pause: PlaybackEventEntity): PlaybackEventEntity? {
+            val pauseMs = Iso8601.toEpochMillis(pause.timestamp) ?: return null
+            return dao
+                .eventsForSession(pause.sessionId)
+                .filter { it.event == "Play" }
+                .mapNotNull { event -> Iso8601.toEpochMillis(event.timestamp)?.let { it to event } }
+                .filter { (ms, _) -> ms <= pauseMs }
+                .maxByOrNull { (ms, _) -> ms }
+                ?.second
+        }
     }

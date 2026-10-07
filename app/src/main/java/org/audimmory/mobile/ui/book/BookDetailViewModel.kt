@@ -110,6 +110,11 @@ class BookDetailViewModel
                 .observeProgress(bookId)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+        /** Grimmory's per-user download permission (admins always have it). */
+        val canDownload: StateFlow<Boolean> =
+            authRepository.canDownload
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
         val downloadStatus: StateFlow<DownloadStatus> =
             downloadRepository
                 .observeStatus(bookId)
@@ -179,6 +184,7 @@ class BookDetailViewModel
         }
 
         fun startDownload() {
+            if (!canDownload.value) return
             val title = book.value?.title ?: "Audiobook"
             downloadRepository.enqueue(bookId, title)
         }

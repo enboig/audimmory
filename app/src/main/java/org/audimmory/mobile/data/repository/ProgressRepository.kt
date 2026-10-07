@@ -8,8 +8,7 @@ import org.audimmory.mobile.core.PlaybackRules
 import org.audimmory.mobile.core.ProgressMerge
 import org.audimmory.mobile.data.local.ProgressDao
 import org.audimmory.mobile.data.local.ProgressEntity
-import org.audimmory.mobile.data.remote.PagelessApi
-import org.audimmory.mobile.data.remote.ProgressUpdateRequest
+import org.audimmory.mobile.data.remote.GrimmoryClient
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,14 +21,14 @@ private class TimestampedEntity(
 
 /**
  * Offline-first playback progress: local writes are optimistic (persisted
- * immediately with a `dirty` flag), and [sync] reconciles with the server using
- * the same last-write-wins rule the server applies.
+ * immediately with a `dirty` flag), and [sync] reconciles with the server
+ * last-write-wins by timestamp.
  */
 @Singleton
 class ProgressRepository
     @Inject
     constructor(
-        private val api: PagelessApi,
+        private val client: GrimmoryClient,
         private val progressDao: ProgressDao,
         private val connectionStatusRepository: ConnectionStatusRepository,
     ) {
@@ -70,38 +69,30 @@ class ProgressRepository
          * and merge them in (server value wins only when strictly newer). Returns a
          * Result so callers can surface failures without crashing offline flows.
          */
-        suspend fun sync(since: String? = null): Result<Unit> =
+        suspend fun sync(): Result<Unit> =
             syncMutex.withLock {
                 val result =
                     runCatching {
                         // Push local changes first so the server has our latest before we pull.
                         for (local in progressDao.dirty()) {
-                            val response =
-                                api.updateProgress(
-                                    local.bookId,
-                                    ProgressUpdateRequest(
-                                        currentSeconds = local.currentSeconds,
-                                        durationSeconds = local.durationSeconds,
-                                        lastPlayedAt = local.lastPlayedAt ?: Iso8601.now(),
-                                    ),
-                                )
-                            // Store the server's authoritative result and clear the dirty flag.
-                            progressDao.upsert(response.progress.toEntity(dirty = false))
+                            client.updateProgress(local.bookId, local.currentSeconds, local.durationSeconds)
+                            // Grimmory answers with no body; only clear the flag if the
+                            // row was not written again while the request was in flight.
+                            if (progressDao.get(local.bookId) == local) {
+                                progressDao.upsert(local.copy(dirty = false))
+                            }
                         }
 
-                        // Pull remote changes and merge non-dirty updates.
-                        val remote = api.progress(since).progress
-                        for (dto in remote) {
-                            val current = progressDao.get(dto.bookId)
+                        // Grimmory has no "changed since" feed, so pull the books the
+                        // server lists as in progress plus those this device knows.
+                        val candidates =
+                            (client.continueListeningIds(PULL_LIMIT) + progressDao.recentBookIds(PULL_LIMIT)).distinct()
+                        for (bookId in candidates) {
+                            val current = progressDao.get(bookId)
                             // Never clobber an unsynced local write; that will be pushed next sync.
                             if (current?.dirty == true) continue
 
-                            // A server tombstone removes the local record (progress reset elsewhere).
-                            if (dto.deleted) {
-                                progressDao.delete(dto.bookId)
-                                continue
-                            }
-
+                            val dto = runCatching { client.progress(bookId) }.getOrNull() ?: continue
                             if (ProgressMerge.incomingWins(TimestampedEntity(current), TimestampedEntity(dto.toEntity()))) {
                                 progressDao.upsert(dto.toEntity(dirty = false))
                             }
@@ -111,6 +102,11 @@ class ProgressRepository
                     .onSuccess { connectionStatusRepository.markServerSuccess() }
                     .onFailure { connectionStatusRepository.markServerFailure() }
             }
+
+        private companion object {
+            /** Books checked per pull; each costs one request. */
+            const val PULL_LIMIT = 25
+        }
     }
 
 internal fun updatedProgress(

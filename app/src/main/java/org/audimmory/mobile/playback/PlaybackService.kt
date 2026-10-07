@@ -13,7 +13,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
@@ -34,6 +33,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
 import org.audimmory.mobile.MainActivity
 import org.audimmory.mobile.R
 import org.audimmory.mobile.data.local.PlayerSettingsStore
@@ -42,7 +42,6 @@ import org.audimmory.mobile.data.repository.PlaybackHistoryRepository
 import org.audimmory.mobile.data.repository.PlaybackSessionStart
 import org.audimmory.mobile.data.repository.ProgressRepository
 import org.audimmory.mobile.data.sync.SyncScheduler
-import okhttp3.OkHttpClient
 import javax.inject.Inject
 
 /**
@@ -102,14 +101,15 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         // Route HTTP(S) through OkHttp (auth + base-URL interceptors) and fall
-        // back to the platform resolvers for local file:// URIs.
+        // back to the platform resolvers for local file:// URIs. The audiobook
+        // factory joins the tracks of folder-based books into one timeline.
         val httpFactory = OkHttpDataSource.Factory(okHttpClient)
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
 
         player =
             ExoPlayer
                 .Builder(this)
-                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+                .setMediaSourceFactory(AudiobookMediaSourceFactory(dataSourceFactory))
                 .setHandleAudioBecomingNoisy(true)
                 .build()
 

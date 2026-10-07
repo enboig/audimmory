@@ -28,9 +28,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.audimmory.mobile.data.local.SessionStore
-import org.audimmory.mobile.data.remote.bookDownloadUrl
-import org.audimmory.mobile.data.repository.DownloadRepository
 import org.audimmory.mobile.data.repository.LibraryRepository
 import org.audimmory.mobile.data.repository.PlaybackTeardown
 import org.audimmory.mobile.data.repository.ProgressRepository
@@ -57,7 +54,7 @@ data class PlayerState(
 /**
  * App-facing handle to the [PlaybackService], connecting via a [MediaController].
  * Exposes state as a flow and offers play/pause/seek/speed commands. Chooses a
- * local downloaded file when available, otherwise streams from the server.
+ * downloaded files when available, otherwise streams from the server.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @androidx.annotation.OptIn(markerClass = [UnstableApi::class])
@@ -66,10 +63,9 @@ class PlayerConnection
     @Inject
     constructor(
         @param:ApplicationContext private val context: Context,
-        private val downloadRepository: DownloadRepository,
+        private val bookAudioResolver: BookAudioResolver,
         private val libraryRepository: LibraryRepository,
         private val progressRepository: ProgressRepository,
-        private val sessionStore: SessionStore,
     ) : PlaybackTeardown {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -167,39 +163,11 @@ class PlayerConnection
                     saveCurrentProgressBeforePreview(c)
                 }
 
-                val local = downloadRepository.localPathIfComplete(bookId)
-                val uri =
-                    if (local != null) {
-                        Uri.fromFile(File(local))
-                    } else {
-                        Uri.parse(bookDownloadUrl(sessionStore.currentServerUrl(), bookId))
-                    }
-
                 val resumeMs =
                     startPositionMs
                         ?: (progressRepository.resumePositionSeconds(bookId) * 1000).toLong()
 
-                val book = libraryRepository.getBook(bookId)
-                val artworkUri =
-                    book
-                        ?.coverLocalPath
-                        ?.takeIf { book.hasCover && book.coverUpdatedAt == book.updatedAt && File(it).exists() }
-                        ?.let { Uri.fromFile(File(it)) }
-
-                val item =
-                    MediaItem
-                        .Builder()
-                        .setMediaId(bookId)
-                        .setUri(uri)
-                        .setMediaMetadata(
-                            MediaMetadata
-                                .Builder()
-                                .setTitle(title)
-                                .setArtist(author)
-                                .setArtworkUri(artworkUri)
-                                .setExtras(Bundle().apply { putBoolean(EXTRA_PREVIEW, preview) })
-                                .build(),
-                        ).build()
+                val item = buildItem(bookId, title, author, preview)
 
                 // Provide the start position atomically with the item so it is
                 // applied when the item is prepared. A separate seekTo() after
@@ -252,40 +220,51 @@ class PlayerConnection
                     return@launch
                 }
 
-                val local = downloadRepository.localPathIfComplete(bookId)
-                val uri =
-                    if (local != null) {
-                        Uri.fromFile(File(local))
-                    } else {
-                        Uri.parse(bookDownloadUrl(sessionStore.currentServerUrl(), bookId))
-                    }
                 val resumeMs = (progressRepository.resumePositionSeconds(bookId) * 1000).toLong()
-                val book = libraryRepository.getBook(bookId)
-                val artworkUri =
-                    book
-                        ?.coverLocalPath
-                        ?.takeIf { book.hasCover && book.coverUpdatedAt == book.updatedAt && File(it).exists() }
-                        ?.let { Uri.fromFile(File(it)) }
-
-                val item =
-                    MediaItem
-                        .Builder()
-                        .setMediaId(bookId)
-                        .setUri(uri)
-                        .setMediaMetadata(
-                            MediaMetadata
-                                .Builder()
-                                .setTitle(title)
-                                .setArtist(author)
-                                .setArtworkUri(artworkUri)
-                                .setExtras(Bundle().apply { putBoolean(EXTRA_PREVIEW, false) })
-                                .build(),
-                        ).build()
+                val item = buildItem(bookId, title, author, preview = false)
 
                 if (resumeMs > 0) c.setMediaItem(item, resumeMs) else c.setMediaItem(item)
                 c.playWhenReady = false
                 c.prepare()
             }
+        }
+
+        /**
+         * Builds the single [MediaItem] for a book. Its URI is the first track;
+         * every track rides along in the metadata extras so the service's
+         * [AudiobookMediaSourceFactory] can join multi-file books.
+         */
+        private suspend fun buildItem(
+            bookId: String,
+            title: String,
+            author: String?,
+            preview: Boolean,
+        ): MediaItem {
+            val tracks = bookAudioResolver.resolve(bookId)
+            val book = libraryRepository.getBook(bookId)
+            val artworkUri =
+                book
+                    ?.coverLocalPath
+                    ?.takeIf { book.hasCover && book.coverUpdatedAt == book.updatedAt && File(it).exists() }
+                    ?.let { Uri.fromFile(File(it)) }
+
+            return MediaItem
+                .Builder()
+                .setMediaId(bookId)
+                .setUri(tracks.first().uri)
+                .setMediaMetadata(
+                    MediaMetadata
+                        .Builder()
+                        .setTitle(title)
+                        .setArtist(author)
+                        .setArtworkUri(artworkUri)
+                        .setExtras(
+                            Bundle().apply {
+                                putBoolean(EXTRA_PREVIEW, preview)
+                                AudiobookMediaSourceFactory.writeTracks(this, tracks)
+                            },
+                        ).build(),
+                ).build()
         }
 
         fun playPause() {

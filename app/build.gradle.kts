@@ -45,7 +45,7 @@ val appVersionCode = versionProp("VERSION_CODE").toInt()
 
 // Optional release signing. Key material, if any, lives only on the
 // maintainer's machine: a git-ignored keystore.properties at the repo root, or
-// the equivalent PAGELESS_UPLOAD_* environment variables. Nothing in this
+// the equivalent AUDIMMORY_UPLOAD_* environment variables. Nothing in this
 // repository configures either, so release builds are unsigned by default.
 //
 // That default is load-bearing rather than incidental. Distribution is F-Droid
@@ -69,7 +69,7 @@ fun signingProp(
         ?.takeIf { it.isNotBlank() }
 
 val uploadStoreFile =
-    signingProp("storeFile", "PAGELESS_UPLOAD_STORE_FILE")?.let { path ->
+    signingProp("storeFile", "AUDIMMORY_UPLOAD_STORE_FILE")?.let { path ->
         rootProject.file(path)
     }
 
@@ -83,7 +83,7 @@ if (uploadStoreFile != null && !hasUploadKey) {
 }
 
 android {
-    namespace = "live.pageless.mobile"
+    namespace = "org.audimmory.mobile"
     compileSdk = 36
 
     // Null when no upload key is configured, which leaves the release build
@@ -92,9 +92,9 @@ android {
         if (hasUploadKey) {
             signingConfigs.create("upload") {
                 storeFile = uploadStoreFile
-                storePassword = signingProp("storePassword", "PAGELESS_UPLOAD_STORE_PASSWORD")
-                keyAlias = signingProp("keyAlias", "PAGELESS_UPLOAD_KEY_ALIAS")
-                keyPassword = signingProp("keyPassword", "PAGELESS_UPLOAD_KEY_PASSWORD")
+                storePassword = signingProp("storePassword", "AUDIMMORY_UPLOAD_STORE_PASSWORD")
+                keyAlias = signingProp("keyAlias", "AUDIMMORY_UPLOAD_KEY_ALIAS")
+                keyPassword = signingProp("keyPassword", "AUDIMMORY_UPLOAD_KEY_PASSWORD")
                 // Play requires the classic JAR signature on uploaded bundles;
                 // v2/v3 APK signing is applied by Play when it re-signs for devices.
                 enableV1Signing = true
@@ -105,7 +105,7 @@ android {
         }
 
     defaultConfig {
-        applicationId = "live.pageless.mobile"
+        applicationId = "org.audimmory.mobile"
         minSdk = 26
         // Raising this to 37 is not a routine bump: Android 17 enforces Local
         // Network Protections for apps targeting SDK 37+, and every request to

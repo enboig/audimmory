@@ -2,6 +2,6 @@
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.**
 -keepclassmembers class **$$serializer { *; }
--keepclasseswithmembers class live.pageless.mobile.data.remote.** {
+-keepclasseswithmembers class org.audimmory.mobile.data.remote.** {
     kotlinx.serialization.KSerializer serializer(...);
 }

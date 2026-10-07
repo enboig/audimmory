@@ -1,3 +1,0 @@
-You can now bookmark from your headphones. Turn on "Bookmark with the next-track button", and a press of next saves a bookmark at the current position instead of jumping forward, so you can mark a spot without looking at your phone. A short buzz confirms it, hence the vibrate permission.
-
-Pressing back on Bluetooth headphones, the notification or the lock screen used to restart the book from the beginning, and forward did nothing. Both now jump by your configured amounts, with icons to match.

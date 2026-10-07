@@ -1,0 +1,38 @@
+# F-Droid metadata DRAFT for Audimmory — NOT SUBMITTED.
+#
+# Audimmory is not in F-Droid yet. This file is the starting point for a
+# submission to fdroiddata as metadata/org.audimmory.mobile.yml; the Builds
+# entry must be filled with a real release tag, versionName, versionCode and
+# commit SHA first. It was adapted from the Pageless recipe, which F-Droid
+# builds as live.pageless.mobile. Validate with `fdroid lint org.audimmory.mobile`
+# and `fdroid build org.audimmory.mobile` before opening a merge request.
+#
+# See https://f-droid.org/docs/Building_Applications and
+# https://f-droid.org/docs/Reference for the full metadata reference.
+
+Categories:
+  - Multimedia
+License: GPL-3.0-or-later
+AuthorName: enboig
+SourceCode: https://github.com/enboig/audimmory
+IssueTracker: https://github.com/enboig/audimmory/issues
+
+AutoName: Audimmory
+
+RepoType: git
+Repo: https://github.com/enboig/audimmory.git
+
+Builds:
+  - versionName: 'FILL-ME'
+    versionCode: 0
+    commit: FILL-ME
+    subdir: app
+    gradle:
+      - yes
+    # F-Droid builds and signs the APK itself; no upload key is needed here.
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^[0-9]{14}-[0-9a-f]{9}$
+UpdateCheckData: version.properties|VERSION_CODE=(\d+)|.|VERSION_NAME=(.+)
+CurrentVersion: 'FILL-ME'
+CurrentVersionCode: 0

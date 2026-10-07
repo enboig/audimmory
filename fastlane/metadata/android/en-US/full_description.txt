@@ -1,17 +1,18 @@
-Pageless is the native Android client for Pageless, a self-hosted audiobook server. It is offline-first: browse your library, download books for offline listening, play without a connection, and sync your progress back to your own server over its token-authenticated JSON API.
+Audimmory is an Android audiobook player for Grimmory, the self-hosted book server. It is offline-first: browse the audiobooks in your Grimmory libraries, download them for offline listening, play without a connection, and sync your position back to your own server.
 
-You must run your own Pageless server; the app connects to a server URL that you configure on the login screen. No account or data is sent to any third party.
+You must run your own Grimmory server; the app connects to a server URL that you configure on the login screen. No account or data is sent to any third party.
 
-Server source and setup instructions:
-https://github.com/dcaixinha/pageless
+Grimmory source and setup instructions:
+https://github.com/grimmory-tools/grimmory
 
 Features:
 
-• Browse your library, series, collections, and playlists.
+• Plays single-file audiobooks (M4B, M4A, MP3, Opus) and folder-based audiobooks made of many MP3 files, as one continuous book.
+• Browse your audiobooks by series, shelves, magic shelves, authors, narrators, genres and more.
 • Open book details with metadata, chapters, bookmarks, and listening progress.
 • Download books (audio and covers) for fully offline playback.
 • Media3-powered background playback with notification and lock-screen controls, a mini-player, and a full Now Playing screen.
-• Playback progress, bookmarks, and listening history sync back to your server, merged last-write-wins so multiple devices stay in agreement.
+• Playback progress and bookmarks sync with your Grimmory server, so you can continue in Grimmory's web player.
 • Light, dark, and system themes.
 
-Pageless is open-source software, released under the GNU General Public License v3.0 or later.
+Audimmory is a fork of Pageless Mobile and is open-source software, released under the GNU General Public License v3.0 or later.

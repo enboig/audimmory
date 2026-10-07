@@ -1,13 +1,13 @@
 # F-Droid publishing
 
-Pageless is a good fit for the official F-Droid repository: it is GPL-3.0-or-later
+Audimmory is **not yet published** on F-Droid. It is a good fit for the official F-Droid repository: it is GPL-3.0-or-later
 (see `/LICENSE`), builds from source with Gradle, and has **no proprietary
 dependencies** (no Google Play Services, Firebase, or other non-free SDKs).
 
 ## How F-Droid builds it
 
 F-Droid builds and signs the app on its own infrastructure from a tagged commit
-— it does **not** use your Play upload key. The release APK is produced with:
+— it does **not** use any key of yours. The release APK is produced with:
 
     ./gradlew :app:assembleRelease
 
@@ -25,13 +25,13 @@ same static values from the tagged source.
    Release.
 3. Record the generated `versionName`, `versionCode`, and full release commit SHA.
 4. Fork https://gitlab.com/fdroid/fdroiddata.
-5. Copy `fdroid/live.pageless.mobile.yml` (in this repo) to
-   `metadata/live.pageless.mobile.yml` in your fork, replacing the example first
+5. Copy `fdroid/org.audimmory.mobile.yml` (in this repo) to
+   `metadata/org.audimmory.mobile.yml` in your fork, replacing the example first
    build and `CurrentVersion` values with the generated release values.
 6. Validate locally with the fdroidserver tools:
 
-       fdroid lint live.pageless.mobile
-       fdroid build live.pageless.mobile
+       fdroid lint org.audimmory.mobile
+       fdroid build org.audimmory.mobile
 
 7. Open a merge request against fdroiddata.
 
@@ -55,17 +55,7 @@ parse the Gradle file and would fail — silently, with no new versions ever
 appearing. Keep `version.properties` a flat `KEY=value` file for the same
 reason.
 
-Verified working on 2026-08-23: tag `20260822130925-a79739e9d` was detected and
-its build entry added upstream automatically about 22 hours after the push.
-Building and publishing the APK takes longer — F-Droid's build cycle runs once
-a day and publication typically takes a few days. Check with:
-
-```sh
-curl -s https://f-droid.org/api/v1/packages/live.pageless.mobile
-```
-
-Store listing text and screenshots come from `fastlane/metadata/android/en-US/`
-in this repo, which both F-Droid and Play read.
+(The Pageless upstream verified this detection mechanism in August 2026.)
 
 ## Notes
 

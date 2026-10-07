@@ -113,10 +113,30 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           echo "Created release commit and tag $TAG"
 
+      - name: Restore signing key
+        # The maintainer's release key lives in repository secrets. Without
+        # them (forks) the build below falls back to an unsigned APK.
+        env:
+          KEYSTORE_BASE64: ${{ secrets.AUDIMMORY_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          if [[ -n "$KEYSTORE_BASE64" ]]; then
+            KEYSTORE="$RUNNER_TEMP/audimmory-release.jks"
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+            echo "AUDIMMORY_UPLOAD_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No signing key configured; the release APK is unsigned."
+          fi
+
       - name: Build release APK
-        # Signing config is added in a later publishing step; this APK is
-        # currently unsigned.
+        env:
+          AUDIMMORY_UPLOAD_STORE_PASSWORD: ${{ secrets.AUDIMMORY_UPLOAD_STORE_PASSWORD }}
+          AUDIMMORY_UPLOAD_KEY_ALIAS: ${{ secrets.AUDIMMORY_UPLOAD_KEY_ALIAS }}
+          AUDIMMORY_UPLOAD_KEY_PASSWORD: ${{ secrets.AUDIMMORY_UPLOAD_KEY_PASSWORD }}
         run: ./gradlew assembleRelease
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/audimmory-release.jks"
 
       - name: Push release commit and tag
         env:

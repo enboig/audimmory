@@ -79,7 +79,11 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
 `./gradlew assembleRelease` produces an **unsigned** release APK. Sign it with
 your own key (see `keystore.properties` / `AUDIMMORY_UPLOAD_*` in
-`app/build.gradle.kts`) or let a store such as F-Droid sign it. Audimmory is not
+`app/build.gradle.kts`) or let a store such as F-Droid sign it. The APKs on
+[GitHub Releases](https://github.com/enboig/audimmory/releases) are signed by
+the release workflow with the maintainer's key (certificate SHA-256
+`5D:45:71:E0:54:57:C4:FF:76:4B:A5:2D:9A:41:65:33:45:7E:16:96:3C:36:2C:79:4E:D2:70:EA:DD:E3:10:61`);
+install them directly or track the repository with Obtainium. Audimmory is not
 yet published on F-Droid; see [`fdroid/README.md`](fdroid/README.md).
 
 ## Connecting To A Server

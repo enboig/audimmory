@@ -68,11 +68,17 @@ docs and the endpoint table; this file captures conventions and gotchas.
 - **Release signing is conditional and must stay that way.** `assembleRelease`
   produces an *unsigned* APK unless a signing key is configured through a
   git-ignored `keystore.properties` or the `AUDIMMORY_UPLOAD_*` environment
-  variables — and nothing configures one. That unsigned default is load-bearing:
-  `release.yml` and F-Droid both build on machines with no key, and **F-Droid
-  signs with its own key**, so making signing unconditional would break the only
-  distribution channel. Never commit key material, and never add signing secrets
-  to CI without a deliberate decision.
+  variables. The unsigned default is load-bearing: F-Droid and forks build on
+  machines with no key, and **F-Droid signs with its own key**, so making
+  signing unconditional would break them. Never commit key material.
+- **GitHub Releases are signed with the maintainer's key.** By the maintainer's
+  decision (2026-10-07) the repository secrets hold the keystore
+  (`AUDIMMORY_UPLOAD_KEYSTORE_BASE64`, base64 of the `.jks`) and
+  `AUDIMMORY_UPLOAD_STORE_PASSWORD`/`_KEY_ALIAS`/`_KEY_PASSWORD`; `release.yml`
+  decodes the keystore into `$RUNNER_TEMP` only for `assembleRelease`, and
+  falls back to an unsigned APK when the secrets are absent. Users install
+  these APKs with Obtainium, so every release must keep the same key
+  (SHA-256 `5D:45:71:E0:…:E3:10:61`) or updates stop installing.
 - **Distribution:** not published in any store yet. `fdroid/org.audimmory.mobile.yml`
   is an unsubmitted draft recipe (see `fdroid/README.md`). Pageless itself is on
   F-Droid as `live.pageless.mobile`; that listing belongs to upstream and must

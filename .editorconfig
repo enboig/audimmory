@@ -14,7 +14,7 @@ max_line_length = off
 # ktlint configuration.
 #
 # `function-naming` is disabled because Jetpack Compose @Composable functions
-# are intentionally PascalCase (e.g. `SettingsScreen`, `PagelessTheme`), which
+# are intentionally PascalCase (e.g. `SettingsScreen`, `AudimmoryTheme`), which
 # ktlint's standard rule would otherwise flag.
 ktlint_standard_function-naming = disabled
 

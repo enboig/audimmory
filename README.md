@@ -1,43 +1,46 @@
-# Pageless Mobile (Android)
+# Audimmory (Android)
 
-Native Android client for [Pageless](https://github.com/dcaixinha/pageless), a
-self-hosted audiobook server. The app is Android-only and offline-first: browse
-your library, download `.m4b` files and covers, play without a connection, and
-sync playback progress, bookmarks, and listening history back to the server over
-its token-authenticated JSON API.
+Native Android audiobook client for [Grimmory](https://github.com/grimmory-tools/grimmory),
+the self-hosted book server. The app is Android-only and offline-first: browse
+the audiobooks in your Grimmory libraries, download them with their covers, play
+without a connection, and sync playback progress, bookmarks, and listening
+sessions back to the server over its token-authenticated REST API.
+
+Both kinds of Grimmory audiobook are supported:
+
+- **single-file** books (`.m4b`, `.m4a`, `.mp3`, `.opus`), with embedded
+  chapters when the file has them;
+- **folder-based** books, a directory of audio files (typically `.mp3`), which
+  play as one continuous book with each file shown as a chapter.
+
+Audimmory is a fork of [Pageless Mobile](https://github.com/dcaixinha/pageless-mobile)
+by the Pageless contributors, adapted to Grimmory. See [`NOTICE`](NOTICE).
 
 Built with Kotlin, Jetpack Compose, Material 3, Hilt, Retrofit/OkHttp, Room,
 DataStore, WorkManager, Coil, and Media3/ExoPlayer.
 
 ## Status
 
-The app is in active early development, but the core listening flow is working:
+The core listening flow works against Grimmory v3.5:
 
-- Login against a configurable Pageless server URL.
-- Browse Home and Library from Room-backed offline-first data. The Library can
-  filter offline by authors, narrators, genres, series, collections, playlists,
-  publishers, language, libraries, and progress, and supports the same
-  metadata/progress sorting options as the web app. Library search filters the
-  grid while presenting grouped books and metadata facets from the local cache.
+- Sign in with a Grimmory username and password. Access tokens are renewed
+  automatically with Grimmory's refresh token.
+- Browse Home (continue listening, recently added, listen again) and the
+  Library from Room-backed offline-first data. Only books with an audiobook
+  file are shown. The Library filters offline by authors, narrators, genres
+  (Grimmory categories), series, shelves, magic shelves, publisher, language,
+  libraries, and progress.
 - Open book details with metadata, chapters, progress, bookmarks, downloads, and
-  listening history. Normalized metadata values link back to the Library with
-  the corresponding offline filter applied.
-- Download books for offline playback, including detail metadata, chapters,
-  cover image, and `.m4b` audio. Cover caching is required for a successful
-  offline download.
+  listening history.
+- Download books for offline playback (audio files, chapters and cover), when
+  the Grimmory account has the download permission or is an admin.
 - Play streamed or downloaded audio with Media3 background playback,
   notification/lock-screen controls, mini-player, and full Now Playing screen.
-- Save playback progress locally every 10 seconds while playing and on pause,
-  seek, task removal, and service shutdown.
-- Sync progress, bookmarks, and listening history to the server while playing,
-  during pull-to-refresh, and periodically with WorkManager.
-- Add/delete bookmarks, preview bookmarks without changing book progress, and
-  configure bookmark preview context time.
-- Show connection/sync warning icons for no internet and server-unavailable
-  states.
-- Configure player behavior in Settings, including jump intervals, notification
-  seeking, mini-player chapter track, Now Playing total/chapter tracks, and
-  bookmark context time.
+- Sync progress and bookmarks with Grimmory, so the position is shared with
+  Grimmory's web player, and record finished listening sessions as Grimmory
+  reading sessions.
+- Configure player behavior in Settings: jump intervals, notification seeking,
+  headset bookmark button, chapter tracks, and bookmark context time.
 
 ## Requirements
 
@@ -74,24 +77,17 @@ export ANDROID_HOME=/path/to/android-sdk
 
 The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
-`./gradlew assembleRelease` produces an **unsigned** release APK. That is what
-CI and F-Droid build; F-Droid signs it with its own key on its own
-infrastructure. See [`fdroid/README.md`](fdroid/README.md) for how releases
-reach F-Droid.
+`./gradlew assembleRelease` produces an **unsigned** release APK. Sign it with
+your own key (see `keystore.properties` / `AUDIMMORY_UPLOAD_*` in
+`app/build.gradle.kts`) or let a store such as F-Droid sign it. Audimmory is not
+yet published on F-Droid; see [`fdroid/README.md`](fdroid/README.md).
 
 ## Connecting To A Server
 
-The Pageless server lives in the sibling repository `../pageless`.
-
-**Debug builds** default to `http://10.0.2.2:5050`, Android Emulator's alias for
-the host machine's `localhost:5050`. On a physical device, enter your computer's
-LAN IP on the login screen, for example `http://192.168.50.96:5050`.
-
-For physical-device testing, start the Phoenix server bound to all interfaces:
-
-```sh
-PHX_HOST_IP=0.0.0.0 mix phx.server
-```
+**Debug builds** default to `http://10.0.2.2:6060`, Android Emulator's alias for
+the host machine's `localhost:6060` (Grimmory's default port). On a physical
+device, enter your computer's LAN IP on the login screen, for example
+`http://192.168.50.96:6060`.
 
 Debug builds allow cleartext HTTP for LAN development via
 `app/src/debug/res/xml/network_security_config.xml`.
@@ -102,30 +98,51 @@ Release defaults to `https://` and uses
 
 The certificate may be issued by a publicly trusted CA **or by a private CA the
 user has installed on the device** (Android Settings → Security → Encryption &
-credentials → Install a certificate → CA certificate). That covers internal CAs
-and self-signed certificates, so a LAN-only server does not need a public
-certificate. Certificates that are neither system-trusted nor installed by the
-user are rejected, as is cleartext HTTP.
+credentials → Install a certificate → CA certificate). Certificates that are
+neither system-trusted nor installed by the user are rejected, as is cleartext
+HTTP.
+
+OIDC-only accounts are not supported yet; the account needs a local Grimmory
+password.
 
 ## Server Compatibility
 
-Use this app with a current Pageless server checkout. Mobile sync currently
-depends on API support for:
+Tested against Grimmory v3.5.0. The app uses these Grimmory endpoints:
 
-- bearer-token sessions
-- books, home shelves, covers, and audio download
-- structured authors, narrators, genres, series, a singular nullable publisher,
-  and library metadata used by offline filtering and sorting
-- progress sync
-- bookmark sync
-- listening history sync (`POST /api/listening-history`)
+| Purpose | Endpoint |
+| --- | --- |
+| Sign in / renew / sign out | `POST /api/v1/auth/login`, `/refresh`, `/logout` |
+| Account and permissions | `GET /api/v1/users/me`, `GET /api/v1/version` |
+| Libraries | `GET /api/v1/libraries` |
+| Books (audiobooks only) | `GET /api/v1/app/books?fileType=AUDIOBOOK`, `GET /api/v1/app/books/{id}` |
+| Home shelves | sorted and status-filtered `GET /api/v1/app/books` lists |
+| Audio layout | `GET /api/v1/audiobooks/{id}/info` |
+| Audio | `GET /api/v1/audiobooks/{id}/stream`, `/track/{n}/stream` |
+| Covers | `GET /api/v1/media/book/{id}/audiobook-cover` (or `/cover`) |
+| Progress | `GET`/`PUT /api/v1/app/books/{id}/progress` |
+| Bookmarks | `/api/v1/bookmarks` |
+| Shelves | `GET /api/v1/app/shelves`, `/app/shelves/magic` |
+| Listening sessions | `POST /api/v1/reading-sessions` |
 
-If you recently pulled server changes, run server migrations before testing:
+Two endpoints are deliberately not used because of Grimmory v3.5.0 bugs:
+`GET /api/v1/app/libraries` answers HTTP 500, and
+`GET /api/v1/app/books/continue-listening` is always empty for admin accounts.
 
-```sh
-cd ../pageless
-mix ecto.migrate
-```
+### How Grimmory concepts map onto the app
+
+- **IDs** are Grimmory's numeric IDs, stored as strings.
+- **Series, narrators, genres, publishers** are free-text names in Grimmory, so
+  the name doubles as the facet ID. Series are derived from the audiobook list.
+- **Collections** in the app are Grimmory **shelves**; **playlists** are
+  Grimmory **magic shelves**. Both are read-only on mobile.
+- **Folder-based positions**: Grimmory stores progress and bookmarks of a
+  folder-based book as a track index plus a position inside that track. The app
+  converts to and from one continuous timeline (`core/TrackTimeline`).
+- **Bookmarks** get their ID from the server. A bookmark created offline keeps
+  a temporary local UUID until the next sync creates it on the server.
+- **Listening history**: sessions are recorded locally (with play/pause/seek
+  events) and each finished session is sent once as a Grimmory reading session.
+  Individual events stay on the device.
 
 ## Offline And Sync Behavior
 
@@ -136,15 +153,18 @@ mix ecto.migrate
   catalog. Cache writes and account/server cache clearing are serialized so an
   old session cannot repopulate Room after logout or a server switch.
 - Progress and bookmarks use dirty/tombstone flags for offline-first sync.
-- Playback progress uses last-write-wins by `lastPlayedAt`, matching the server.
-- Listening history is captured locally as sessions/events and pushed to the
-  server with stable client UUIDs so retries are idempotent.
+  Grimmory has no change feed, so the pull side asks for the progress and
+  bookmarks of recently played books (the server's in-progress books plus
+  locally known progress).
+- Playback progress uses last-write-wins by `lastPlayedAt`.
+- Listening sessions are pushed once they end; a session left open by a killed
+  app is pushed after it has been idle for 30 minutes.
 - Periodic sync is scheduled with WorkManager every 15 minutes when network is
   connected. Active playback also attempts server progress sync every 60 seconds.
 - Pull-to-refresh on Home, Library, and Book screens refreshes server data; the
   Library refresh also pushes queued progress/bookmark/history sync.
-- Offline downloads store audio under app-private files and track completed
-  downloads in Room. Removing a download removes both audio and cached cover
+- Offline downloads store audio under app-private files, one directory per book
+  with one file per track, and track completed downloads in Room. Removing a download removes both audio and cached cover
   paths.
 
 ## Playback
@@ -164,6 +184,10 @@ mix ecto.migrate
   backward/forward amount” instead of skipping tracks, and are labelled with
   matching skip icons. A book is loaded as a single media item, so Media3's stock
   previous would otherwise restart the book from the beginning.
+- A folder-based book is still a single media item: `AudiobookMediaSourceFactory`
+  joins its tracks with Media3's `ConcatenatingMediaSource2`, so seeking, chapters
+  and jump controls work across file boundaries. MP3 files without a seek table
+  use constant-bitrate seeking.
 - The setting “Bookmark with the next-track button” (off by default) makes a
   press of next on a Bluetooth headset, car controls or a wired remote create a
   bookmark at the current position instead of jumping forward, confirmed by a
@@ -173,31 +197,22 @@ mix ecto.migrate
 - Bookmark previews use a separate ExoPlayer instance inside the bookmark dialog
   and do not affect normal book progress.
 
-## Shared Logic With The Server
+## Pure Logic
 
-A small amount of pure logic is intentionally duplicated from the Elixir server
-instead of shared as a package. Keep these in sync; mirrored tests help catch
-drift:
-
-| Kotlin (`core/`)        | Elixir (server)                             |
-| ----------------------- | ------------------------------------------- |
-| `PlaybackRules`         | `Pageless.Playback.finished_at_position?/2` |
-| `Chapters.currentIndex` | `Pageless.Library.Chapters.current_index/2` |
-| `TimeFormat`            | `Pageless.Format`                           |
-| `ProgressMerge`         | server progress merge (last-write-wins)     |
-| `Iso8601`               | server ISO-8601 timestamp handling          |
-
-Keep `core/` free of Android, Compose, Retrofit, and Room imports so it remains
-JVM-testable.
+`core/` holds pure, JVM-testable rules (finished threshold, chapter lookup, time
+formatting, progress merge, ISO-8601 handling, and the folder-track timeline).
+They were inherited from Pageless, where they mirrored that server; they are now
+the app's own rules. Keep `core/` free of Android, Compose, Retrofit, and Room
+imports.
 
 ## Project Layout
 
 ```text
-app/src/main/java/live/pageless/mobile/
-  core/            # pure, layer-agnostic logic mirrored from server rules
+app/src/main/java/org/audimmory/mobile/
+  core/            # pure, layer-agnostic logic (no Android imports)
   data/download/   # WorkManager downloads + offline audio/cover file caching
   data/local/      # Room entities/DAOs, database, DataStore stores
-  data/remote/     # Retrofit API, DTOs, auth + base-url interceptors
+  data/remote/     # Grimmory Retrofit API + adapter, DTOs, auth + base-url interceptors
   data/repository/ # offline-first repositories + mappers
   data/sync/       # WorkManager sync worker/scheduler
   di/              # Hilt modules
@@ -207,7 +222,7 @@ app/src/main/java/live/pageless/mobile/
 
 ## Useful Notes
 
-- `PagelessDatabase` currently uses
+- `AudimmoryDatabase` currently uses
   `fallbackToDestructiveMigration(dropAllTables = true)`. Room schema bumps wipe
   local data, which is acceptable during this dev stage but can orphan
   downloaded files.
@@ -215,12 +230,13 @@ app/src/main/java/live/pageless/mobile/
   loading, ExoPlayer streaming, and download/cover caching so protected assets
   carry the bearer token.
 - Brand icon assets live in `res/drawable-*/ic_brand.png`; notification small
-  icon is `R.drawable.ic_stat_pageless`; launcher assets live under `mipmap-*`.
+  icon is `R.drawable.ic_stat_audimmory`; launcher assets live under `mipmap-*`.
 - Native splash/window background is `@color/splash_background`, matching the
   app's dark purple surface tint.
 
 ## License
 
+Copyright (C) 2026 Audimmory contributors
 Copyright (C) 2026 Pageless contributors
 
 This program is free software: you can redistribute it and/or modify it under
@@ -234,3 +250,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <https://www.gnu.org/licenses/>.
+
+Audimmory is a modified version of Pageless Mobile; see [`NOTICE`](NOTICE) for
+the modification notice required by section 5(a) of the license.

@@ -1,3 +1,10 @@
+> **Inherited document.** This is the Google Play data-safety audit written for
+> Pageless Mobile before the fork. Its file references, data inventory and Play
+> decisions describe Pageless (email sign-in, Pageless API), not Audimmory, and
+> it has not been re-audited. It is kept for its rationale, in particular finding
+> **F1** (why backup and device transfer are disabled), which still applies.
+> The current user-facing policy is `privacy-policy.md`.
+
 # Data flow audit and Google Play Data safety answers
 
 Source-backed inventory of every data type Pageless Mobile reads, stores, or

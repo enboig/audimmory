@@ -1,13 +1,19 @@
-# Pageless Mobile — agent guide
+# Audimmory — agent guide
 
-Native **Android** client (Kotlin/Jetpack Compose) for the Pageless self-hosted
-audiobook server. Offline-first: browse the library, download `.m4b` files, play
-them without a connection, and sync playback progress, bookmarks, and listening
-history back to the server over its token-authed JSON API.
+Native **Android** audiobook client (Kotlin/Jetpack Compose) for the
+[Grimmory](https://github.com/grimmory-tools/grimmory) self-hosted book server
+(Java/Spring, a BookLore fork). Offline-first: browse the audiobooks in the
+user's Grimmory libraries, download them (single `.m4b`/`.m4a`/`.mp3`/`.opus`
+files, or folder-based books made of many `.mp3` tracks), play them without a
+connection, and sync progress, bookmarks and listening sessions back to the
+server over its JWT-authed REST API.
 
-The server lives in a **separate repo** (`../pageless`, Elixir/Phoenix). This app
-is **not** part of that repo. See `README.md` here for the full build/run/connect
-docs; this file captures the conventions and gotchas an agent needs.
+Audimmory is a **fork of Pageless Mobile** (GPL-3.0-or-later). Keep `LICENSE`,
+the upstream copyright lines and `NOTICE` (the GPL §5(a) modification notice)
+intact; add a dated line to `NOTICE` for substantial changes. The Grimmory
+server is a separate project (AGPL-3.0); never copy its code into this app —
+talk to it only over the network API. See `README.md` for the build/run/connect
+docs and the endpoint table; this file captures conventions and gotchas.
 
 ## Toolchain & build
 
@@ -30,7 +36,7 @@ docs; this file captures the conventions and gotchas an agent needs.
   `Cannot run program ".../platform-tools/adb"`. Put the SDK's `platform-tools`
   ahead of `/bin` on `PATH` so its `adb` beats a distro `android-tools` build;
   mismatched versions restart the adb server underneath running tools.
-- `namespace` / `applicationId` = **`live.pageless.mobile`**; `minSdk 26`,
+- `namespace` / `applicationId` = **`org.audimmory.mobile`**; `minSdk 26`,
   `compileSdk`/`targetSdk 36`.
 - **AGP 9 uses built-in Kotlin**: `org.jetbrains.kotlin.android` is deliberately
   **not** applied — it is incompatible with AGP 9's new DSL, and AGP compiles
@@ -61,21 +67,20 @@ docs; this file captures the conventions and gotchas an agent needs.
   there).
 - **Release signing is conditional and must stay that way.** `assembleRelease`
   produces an *unsigned* APK unless a signing key is configured through a
-  git-ignored `keystore.properties` or the `PAGELESS_UPLOAD_*` environment
+  git-ignored `keystore.properties` or the `AUDIMMORY_UPLOAD_*` environment
   variables — and nothing configures one. That unsigned default is load-bearing:
   `release.yml` and F-Droid both build on machines with no key, and **F-Droid
   signs with its own key**, so making signing unconditional would break the only
   distribution channel. Never commit key material, and never add signing secrets
   to CI without a deliberate decision.
-- **Distribution is F-Droid only.** Google Play was prepared in detail and then
-  abandoned (see the closed `pm-a6l` epic for the full reasoning: an app that
-  needs a self-hosted server has little to gain from Play's audience, and Play
-  charges a 12-tester/14-day gate plus an annual `targetSdk` and policy
-  re-attestation treadmill that F-Droid does not). Releases reach F-Droid
-  automatically from the release tag; see `fdroid/README.md`.
+- **Distribution:** not published in any store yet. `fdroid/org.audimmory.mobile.yml`
+  is an unsubmitted draft recipe (see `fdroid/README.md`). Pageless itself is on
+  F-Droid as `live.pageless.mobile`; that listing belongs to upstream and must
+  not be reused. Google Play was evaluated upstream and abandoned (closed
+  `pm-a6l` epic).
 - **`targetSdk 37` is gated on Local Network Protections.** Android 17 enforces
   them for apps targeting SDK 37+: reaching a LAN address then requires the
-  runtime `ACCESS_LOCAL_NETWORK` permission, and the usual Pageless server is a
+  runtime `ACCESS_LOCAL_NETWORK` permission, and the usual Grimmory server is a
   LAN address. A denial blocks login, library, covers, downloads, streaming and
   sync at once, which reads as the app being broken. So the permission flow must
   land in the same change as the bump — see `pm-a6l.20`. Until then, do **not**
@@ -99,11 +104,11 @@ docs; this file captures the conventions and gotchas an agent needs.
 ## Project layout
 
 ```
-app/src/main/java/live/pageless/mobile/
+app/src/main/java/org/audimmory/mobile/
   core/            # pure, layer-agnostic logic (duplicated from the server)
   data/download/   # WorkManager downloads + offline audio/cover file caching
-  data/remote/     # Retrofit API (PagelessApi), DTOs, auth + base-url interceptors
-  data/local/      # Room entities/DAOs, PagelessDatabase, DataStore stores
+  data/remote/     # GrimmoryApi + GrimmoryClient adapter, DTOs, auth/refresh + base-url
+  data/local/      # Room entities/DAOs, AudimmoryDatabase, DataStore stores
   data/repository/ # offline-first repositories + mappers
   data/sync/       # WorkManager periodic/one-shot sync worker + scheduler
   playback/        # Media3 PlaybackService + PlayerConnection
@@ -111,31 +116,64 @@ app/src/main/java/live/pageless/mobile/
   ui/              # Compose screens, theme, navigation
 ```
 
-## Shared pure logic (mirror of the server)
+## Pure logic (`core/`)
 
-A small amount of pure logic is intentionally **duplicated** from the Elixir
-server (not shared as a package). Keep it in sync; **mirrored unit tests guard
-against drift**. If you change one of these, change the server counterpart too
-(and vice-versa):
-
-| Kotlin (`core/`)        | Elixir (server)                             |
-| ----------------------- | ------------------------------------------- |
-| `PlaybackRules`         | `Pageless.Playback.finished_at_position?/2` |
-| `Chapters.currentIndex` | `Pageless.Library.Chapters.current_index/2` |
-| `TimeFormat`            | `Pageless.Format`                           |
-| `Plural`                | `Pageless.Format.count/2,3`                 |
-| `ProgressMerge`         | server progress merge (last-write-wins)     |
-| `Iso8601`               | server ISO-8601 timestamp handling          |
+`core/` holds pure rules inherited from Pageless, where they mirrored the
+Pageless server (`PlaybackRules`, `Chapters.currentIndex`, `TimeFormat`,
+`Plural`, `ProgressMerge`, `Iso8601`). They no longer mirror anything; they are
+the app's own rules. `TrackTimeline` converts between the app's continuous book
+timeline and Grimmory's per-track positions. `PlaybackRules` deliberately
+finishes earlier than Grimmory's 99.5% "read" threshold; `GrimmoryClient`
+reports 100% when the app considers a book finished so both sides agree.
 
 Keep `core/` free of Android/Compose/Retrofit imports so it stays unit-testable
 on the JVM.
 
+## Grimmory API
+
+- **All server access goes through `data/remote/GrimmoryClient`**, which adapts
+  the raw Retrofit `GrimmoryApi` (wire DTOs in `GrimmoryDtos.kt`) into the app
+  models in `Dtos.kt`. Repositories never call `GrimmoryApi` directly.
+- Grimmory is a general book server: always filter to audiobooks
+  (`fileType=AUDIOBOOK` on lists) and pass `bookType=AUDIOBOOK` on
+  `/api/v1/audiobooks/*` so books that also have an ebook resolve the audio file.
+- IDs are numeric `Long`s on the server and `String`s in the app. Series,
+  narrators, genres (Grimmory "categories") and publishers are plain names; the
+  name is the facet ID. Series are derived locally from the book list.
+- **Collections = Grimmory shelves; playlists = Grimmory magic shelves.** The
+  internal class/table names stayed `Collection*`/`Playlist*`; user-facing
+  labels say "Shelves"/"Magic shelves".
+- **Auth:** `POST /api/v1/auth/login` (username, not email) returns an access
+  token (2 h) and a refresh token (30 days, rotated on every use, only valid 2
+  minutes after issue). `TokenAuthenticator` renews on 401 for every caller of
+  the shared `OkHttpClient` (Retrofit, Coil, ExoPlayer, downloads).
+- `GET /api/v1/app/libraries` returns HTTP 500 on Grimmory v3.5.0 (Hibernate
+  lazy-load bug); use `GET /api/v1/libraries`. `GET /api/v1/app/books/continue-listening`
+  is always empty for admins (null library set in an `IN` clause); use
+  `/app/books?status=READING&status=RE_READING&sort=lastReadTime`.
+- Jackson serialises Lombok `boolean isX` fields as `x` (e.g. permissions
+  `admin`, book files `primary`) — use `@SerialName`.
+- App page sizes are capped at 50 by the server; `GrimmoryClient` pages.
+- **Folder-based books** store progress and bookmarks as `trackIndex` +
+  `positionMs` *within the track*; single-file books store an absolute
+  `positionMs` with no track index. Convert with `TrackTimeline` at the
+  `GrimmoryClient` boundary only. Progress is saved with both `fileProgress`
+  (needs the audio `bookFileId`) and the legacy `audiobookProgress`, matching
+  Grimmory's web player.
+- Downloads respect Grimmory's `canDownload` permission (admins always may),
+  even though the stream endpoints would work without it. The user decided
+  this; don't remove the gate.
+
 ## Data & sync
 
 - **Offline-first**: repositories read from Room and refresh from the server.
-  Room entities use the server's **UUID** keys and carry `dirty` + `deleted`
-  flags. Progress/bookmarks sync pushes dirty rows + tombstones and pulls the
-  server's `deleted` tombstones (**last-write-wins by timestamp**).
+  Room entities use the server's IDs (as strings) and carry `dirty` + `deleted`
+  flags. Grimmory has no change feed or tombstones: progress sync pushes dirty
+  rows, then pulls per book for the server's in-progress books plus
+  locally known progress (**last-write-wins by timestamp**, compared as
+  instants). Bookmarks are created offline under a temporary UUID and re-keyed
+  to the server ID on sync; a pulled per-book list is authoritative, so synced
+  rows missing from it are deleted locally.
 - Book summaries use structured UUID-backed `authors`, `narrators`, `genres`,
   `series`, and a singular nullable `publisher`; there are no scalar narrator or
   publisher API fields. `BookFacetEntity` and `CachedLibraryEntity` retain the
@@ -147,14 +185,13 @@ on the JVM.
   books, facets, and libraries must not remain visible. All catalog/detail/cover
   writes and account/server cache clearing must use `CacheCoordinator` so an
   in-flight old-session response cannot repopulate Room after a clear.
-- Listening history is captured locally as sessions/events, keyed by client UUIDs,
-  and pushed to the server via `POST /api/listening-history`. The mobile sync
-  path marks history rows clean only after the server batch succeeds.
+- Listening history is captured locally as sessions/events. Each play→pause
+  stretch is sent once to Grimmory as a reading session
+  (`POST /api/v1/reading-sessions`) when its Pause event syncs; the other
+  events stay on the device.
 - Sync runs from `SyncWorker` every 15 minutes on connected networks, from
-  Library pull-to-refresh, and during active playback for progress. If server API
-  changes add migrations in `../pageless`, remember to run `mix ecto.migrate`
-  before testing against a dev server.
-- `PagelessDatabase` currently uses
+  Library pull-to-refresh, and during active playback for progress.
+- `AudimmoryDatabase` currently uses
   `fallbackToDestructiveMigration(dropAllTables = true)` — schema bumps **wipe
   local data** (acceptable for a dev-stage app; can orphan downloaded files).
   Bump `version` when changing entities. `dropAllTables = true` is Room's
@@ -162,21 +199,20 @@ on the JVM.
   removed entities cannot strand rows.
 - Networking is bearer-token auth via OkHttp interceptors; the same authed
   `OkHttpClient` is reused for API calls, Coil image loading
-  (`ImageLoaderFactory` in `PagelessApp`), and ExoPlayer streaming so covers and
+  (`ImageLoaderFactory` in `AudimmoryApp`), and ExoPlayer streaming so covers and
   audio carry the token.
 - Offline downloads must cache the book detail, chapters, cover image (when
-  `hasCover`), and `.m4b` file. Cover failure is a download failure: do not mark
+  `hasCover`), its tracks, and every audio file
+  (`filesDir/audiobooks/<bookId>/<trackIndex>.<ext>`). Cover failure is a download failure: do not mark
   a book downloaded for offline use unless its cover was cached successfully.
   UI cover models should prefer the Room-tracked local cover path and only fall
   back to the authenticated server URL when no valid local cover exists.
 - The **privacy policy has one source of truth**:
-  `docs/privacy/privacy-policy.md`. It is rendered to the published page at
-  <https://pageless.live/privacy> by a script in the maintainer's private VPS
-  dotfiles, and the app links to that URL through `PRIVACY_POLICY_URL` in
-  `ui/components/PrivacyPolicy.kt`. Never bundle policy text into the app or
-  hand-edit the published HTML — Google Play, the store listing and the in-app
-  links all point at that one page, and a second copy will drift. Changing the
-  URL requires an app update, so treat it as stable.
+  `docs/privacy/privacy-policy.md`. The app links to its GitHub rendering
+  through `PRIVACY_POLICY_URL` in `ui/components/PrivacyPolicy.kt`. Never bundle
+  policy text into the app — a second copy will drift. Changing the URL
+  requires an app update, so treat it as stable. (`docs/privacy/data-safety.md`
+  is the inherited Pageless Play audit, not re-done for Audimmory.)
 - **Backup and transfer are deliberately off**, and this needs **three**
   manifest pieces, not one: `android:allowBackup="false"` (covers API 26–30),
   `android:dataExtractionRules="@xml/data_extraction_rules"` (API 31+), and
@@ -214,6 +250,12 @@ on the JVM.
   observes the setting and re-grants commands to connected controllers at
   runtime via `setAvailableCommands`. This only limits the notification/lock
   screen — the in-app player is unaffected.
+- **A book is always one `MediaItem`, even when it is many files.** Folder-based
+  books put their track URIs and durations in the item's metadata extras;
+  `AudiobookMediaSourceFactory` (used by the service *and* the bookmark preview
+  player) joins them with `ConcatenatingMediaSource2` into one window. Build
+  items through `PlayerConnection.buildItem`/`BookAudioResolver`, never with a
+  bare URI. MP3s use constant-bitrate seeking because many lack a seek table.
 - **External transport is jump-backward/forward, never track skip.** A book is a
   **single `MediaItem`** (chapters are UI-side arithmetic), so Media3's stock
   previous is actively destructive: `KEYCODE_MEDIA_PREVIOUS` reaches
@@ -301,7 +343,7 @@ on the JVM.
   Hilt.
 - Theme mode (`System`, `Dark`, `Light`) is also stored in
   `PlayerSettingsStore` as `ThemeMode` and is collected by `MainActivity` before
-  calling `PagelessTheme`. Keep new app-wide visual preferences in this same
+  calling `AudimmoryTheme`. Keep new app-wide visual preferences in this same
   DataStore unless they belong to server-synced account settings.
 
 ## UI conventions
@@ -313,7 +355,7 @@ on the JVM.
   offline. Keep `LibraryFilterEngine` and `LibrarySortEngine` free of Android
   dependencies and unit-tested. Sort labels, default directions, nulls-last
   behavior, case-insensitive titles, compound surnames, and progress timestamp
-  fields must remain aligned with `Pageless.Library` in `../pageless`.
+  fields were aligned with the Pageless web app and are now the app's own.
 - Grouped Library search is also a pure Room-derived projection. Keep
   `LibrarySearchEngine` Android-free and aligned with the web behavior: grid
   filtering starts immediately; grouped results start after two characters;
@@ -334,14 +376,12 @@ on the JVM.
 - Brand wordmark uses **JetBrains Mono** (`ui/theme/Type.kt`, bundled in
   `res/font/`). The in-app brand icon is **`R.drawable.ic_brand`** (real design
   PNG exported per density in `drawable-*/`), used in the Home/Library app bars.
-- The shared Pageless palette is centralized in `ui/theme/Theme.kt` via
-  `PagelessColors`. It intentionally mirrors the web app's design tokens in
-  `../pageless/assets/css/app.css`: primary purple `#8B5CF6`, dark background
-  `#16141F`, dark surface `#1E1B2E`, purple light surfaces, and JetBrains Mono
-  for brand text. When changing brand colors, update both repos together.
+- The palette is centralized in `ui/theme/Theme.kt` via `AudimmoryColors`
+  (inherited from Pageless: primary purple `#8B5CF6`, dark background
+  `#16141F`, dark surface `#1E1B2E`, JetBrains Mono for brand text).
 - The Settings screen owns the user-facing theme selector and must expose the
   same three options as the web app: `System`, `Dark`, and `Light`.
-- The media-notification small icon is **`R.drawable.ic_stat_pageless`**, a
+- The media-notification small icon is **`R.drawable.ic_stat_audimmory`**, a
   white-tinted monochrome vector. It is deliberately *not* the launcher art:
   the launcher art is offset for the adaptive safe zone and looks lopsided at
   small sizes. When editing it, remember it renders **very small** in the status
@@ -349,7 +389,7 @@ on the JVM.
   rendering the vector geometry at ~18px before shipping.
 - Launcher icon is adaptive (maskable background + foreground + monochrome
   themed layer) under `mipmap-*` / `mipmap-anydpi-v26`.
-- Debug builds use `applicationIdSuffix = ".debug"`, app label `Pageless Dev`,
+- Debug builds use `applicationIdSuffix = ".debug"`, app label `Audimmory Dev`,
   and debug-only launcher assets under `app/src/debug/res/` (rotated 180deg) so
   the locally installed app is visually distinct and can live alongside a
   release/Play Store install.
@@ -360,9 +400,11 @@ on the JVM.
 
 ## Testing on a physical device
 
-- Use the machine's **LAN IP** (e.g. `http://192.168.50.96:5050`), *not*
-  `10.0.2.2` (that's the emulator-only host alias). Start the server with
-  `PHX_HOST_IP=0.0.0.0 mix phx.server` so it binds all interfaces.
+- Use the machine's **LAN IP** (e.g. `http://192.168.50.96:6060`), *not*
+  `10.0.2.2` (that's the emulator-only host alias). Grimmory listens on port
+  6060; a throwaway server runs from Grimmory's `deploy/compose/docker-compose.yml`
+  (create the admin with `POST /api/v1/setup`, then a library pointing at a
+  folder of audiobooks).
 - After making Android app changes, run `./gradlew :app:installDebug` when the
   user's physical device is connected so the updated build is installed for
   hands-on testing, unless the user asks not to install it.
@@ -383,7 +425,7 @@ on the JVM.
 - The release workflow's automated commit uses 🔖 and **must keep its
   `[skip ci]` marker** (`.github/workflows/release.yml`); that marker is what
   stops the release commit from re-triggering CI.
-- Historical exception: `🌅 Initial commit` predates this convention (Gitmoji's
+- Historical exception: `🌅 Initial commit` (upstream Pageless) predates this convention (Gitmoji's
   equivalent is 🎉 `:tada:`). Leave it alone, but don't copy it.
 
 Beads Dolt auto-push is enabled with a one-minute debounce. Run `bd dolt pull`

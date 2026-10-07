@@ -8,7 +8,8 @@
       impractical; cleartext is permitted broadly for debug builds only.
 
       The release build uses app/src/main/res/xml/network_security_config.xml,
-      which forbids cleartext and requires HTTPS.
+      which also permits cleartext (for Tailscale-style private networks) and
+      additionally trusts user-installed CAs.
     -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>

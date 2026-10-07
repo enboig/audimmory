@@ -1,31 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!--
-      Release configuration: cleartext HTTP is disallowed, so servers must be
-      reached over HTTPS.
+      Release configuration.
+
+      Cleartext HTTP is permitted. Grimmory is self-hosted and is commonly
+      reached over plain HTTP inside an already-encrypted private network such
+      as Tailscale or WireGuard (e.g. http://100.x.y.z:6060 or a MagicDNS
+      name). Android matches cleartext rules by exact host, not by IP range or
+      tailnet, so those servers cannot be allowlisted individually; without
+      this the release app could not reach them at all. Most self-hosted media
+      clients make the same choice. The trade-off: on an untrusted network an
+      http:// server URL sends the password and tokens unencrypted, so HTTPS
+      remains the right choice whenever the transport is not already
+      encrypted. The login screen does not force either.
 
       Trust anchors include *user-added* CAs as well as the system store. From
       API 24 Android excludes user CAs by default, which would lock out a
-      self-hoster who terminates TLS with their own internal CA — a common
-      setup for a LAN-only audiobook server, and one where a publicly trusted
-      certificate can be awkward to obtain. Those users cannot use the app at
-      all without this, whereas the added exposure requires an attacker who has
-      already got a CA installed on the device: installing one is a deliberate
-      trip through Android Settings, past explicit warnings, and leaves a
-      persistent "network may be monitored" notification in place.
-
-      This also covers self-signed certificates, which Android accepts when
-      installed as a user CA.
+      self-hoster who terminates TLS with their own internal CA. Installing one
+      is a deliberate trip through Android Settings, past explicit warnings,
+      and leaves a persistent "network may be monitored" notification. This
+      also covers self-signed certificates installed as a user CA.
 
       Do not read this as permission to relax TLS further. The app must never
-      disable hostname verification or install a permissive TrustManager;
-      trusting an anchor the device owner deliberately added is a different
-      thing from trusting anything presented.
-
-      Local development uses app/src/debug/res/xml/network_security_config.xml,
-      which relaxes this to permit cleartext to LAN hosts.
+      disable hostname verification or install a permissive TrustManager.
     -->
-    <base-config cleartextTrafficPermitted="false">
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />

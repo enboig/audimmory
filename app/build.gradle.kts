@@ -136,8 +136,9 @@ android {
             buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://10.0.2.2:6060\"")
         }
         release {
-            // No baked-in default: users enter their own HTTPS server. Release
-            // builds forbid cleartext (see app/src/main/res/xml/...).
+            // No baked-in default: users enter their own server. Release builds
+            // also allow http:// for servers on encrypted private networks such
+            // as Tailscale (see app/src/main/res/xml/network_security_config.xml).
             buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://\"")
 
             // Signed with the Play upload key when one is configured locally,

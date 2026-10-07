@@ -49,8 +49,11 @@ Only to the server address you entered, and only over the network:
 | Bookmarks, including any notes you type | When you create, edit or delete one | So bookmarks follow your account |
 | Listening sessions (start and end time, time listened, and the position reached) | When a listening session ends | So your server can show reading statistics |
 
-All of this is sent over **HTTPS**. Release builds of the app refuse to send it
-over unencrypted HTTP.
+All of this is sent over the connection to the server address you entered. Use
+an `https://` address, or a private network that encrypts traffic itself (such
+as Tailscale or WireGuard). The app also accepts plain `http://` addresses so it
+can reach servers on such private networks; over plain HTTP on any other
+network, this data, including your password, travels unencrypted.
 
 ## What the app does *not* do
 

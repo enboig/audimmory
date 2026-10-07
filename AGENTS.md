@@ -224,9 +224,11 @@ on the JVM.
   reason is the plaintext bearer token in the `session` DataStore; everything
   else re-syncs from the server on login. Rationale in
   `docs/privacy/data-safety.md` (finding F1).
-- Debug builds allow cleartext HTTP (LAN convenience,
-  `app/src/debug/res/xml/network_security_config.xml`); **release is HTTPS-only**
-  (`app/src/main/res/xml/...`). Don't leak the debug convenience into release.
+- **Release builds permit cleartext HTTP** (`app/src/main/res/xml/network_security_config.xml`).
+  This is a deliberate decision by the maintainer: their Grimmory is reached as
+  `http://` over Tailscale, which encrypts the transport, and Android cannot
+  allowlist tailnet IPs or MagicDNS names by host. Keep the user-CA trust
+  anchors; never relax TLS verification itself.
 
 ## Playback (Media3)
 

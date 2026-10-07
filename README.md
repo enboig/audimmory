@@ -92,15 +92,18 @@ device, enter your computer's LAN IP on the login screen, for example
 Debug builds allow cleartext HTTP for LAN development via
 `app/src/debug/res/xml/network_security_config.xml`.
 
-**Release builds** forbid cleartext HTTP. Users must enter an HTTPS server URL.
-Release defaults to `https://` and uses
+**Release builds** also allow `http://` server URLs, because Grimmory is often
+reached over plain HTTP inside an encrypted private network such as Tailscale
+(`http://100.x.y.z:6060` or a MagicDNS name), which Android cannot allowlist by
+host. Use HTTPS whenever the network itself is not encrypted: over plain HTTP on
+an untrusted network the password and tokens travel unencrypted. Release
+defaults the URL field to `https://` and uses
 `app/src/main/res/xml/network_security_config.xml`.
 
 The certificate may be issued by a publicly trusted CA **or by a private CA the
 user has installed on the device** (Android Settings → Security → Encryption &
 credentials → Install a certificate → CA certificate). Certificates that are
-neither system-trusted nor installed by the user are rejected, as is cleartext
-HTTP.
+neither system-trusted nor installed by the user are rejected.
 
 OIDC-only accounts are not supported yet; the account needs a local Grimmory
 password.

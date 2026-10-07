@@ -1,0 +1,30 @@
+Audimmory
+Android audiobook client for Grimmory servers.
+
+Copyright (C) 2026 Audimmory contributors
+Copyright (C) 2026 Pageless contributors
+
+Audimmory is a modified version of Pageless Mobile
+(https://github.com/dcaixinha/pageless-mobile), the Android client for the
+Pageless audiobook server. Pageless Mobile is licensed under the GNU General
+Public License, version 3 or (at your option) any later version, and so is
+this modified version. See LICENSE for the full license text.
+
+Modification notice (GNU GPL v3, section 5(a)):
+
+  2026-10-07  Forked from Pageless Mobile at commit 1035190
+              ("Release 2026-09-08"). Renamed to Audimmory with application ID
+              org.audimmory.mobile. Replaced the Pageless server API with the
+              Grimmory server API (https://github.com/grimmory-tools/grimmory),
+              including token refresh, per-track audio for folder-based
+              audiobooks (for example a directory of MP3 files), and mapping of
+              Grimmory shelves, magic shelves, bookmarks, progress and reading
+              sessions onto the app's offline-first model.
+
+The full history of changes is recorded in this repository's git history.
+
+Audimmory is not affiliated with, or endorsed by, the Pageless or Grimmory
+projects. "Pageless" and "Grimmory" are the names of their respective
+projects. Grimmory is licensed separately under the GNU Affero General Public
+License v3; Audimmory contains no Grimmory code and talks to it only over its
+network API.

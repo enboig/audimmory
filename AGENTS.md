@@ -12,7 +12,8 @@ Audimmory is a **fork of Pageless Mobile** (GPL-3.0-or-later). Keep `LICENSE`,
 the upstream copyright lines and `NOTICE` (the GPL §5(a) modification notice)
 intact; add a dated line to `NOTICE` for substantial changes. The Grimmory
 server is a separate project (AGPL-3.0); never copy its code into this app —
-talk to it only over the network API. See `README.md` for the build/run/connect
+talk to it only over the network API. (Its book logo is the one deliberate
+exception: the app icon is derived from it and credited in `NOTICE`.) See `README.md` for the build/run/connect
 docs and the endpoint table; this file captures conventions and gotchas.
 
 ## Toolchain & build
@@ -386,21 +387,29 @@ on the JVM.
   warning states: red `WifiOff` for no validated internet, amber `CloudOff` when
   internet exists but server operations fail.
 - Brand wordmark uses **JetBrains Mono** (`ui/theme/Type.kt`, bundled in
-  `res/font/`). The in-app brand icon is **`R.drawable.ic_brand`** (real design
-  PNG exported per density in `drawable-*/`), used in the Home/Library app bars.
+  `res/font/`). The in-app brand icon is **`R.drawable.ic_brand`** (PNG per
+  density in `drawable-*/`), used in the Home/Library app bars and on Login.
+- **Every icon is generated** by `scripts/icons/make_icons.py` (needs
+  `rsvg-convert` and ImageMagick): launcher, themed monochrome, debug, brand,
+  notification, store icon and feature graphic. Edit the script, never the
+  PNGs. The logo is Grimmory's book (`scripts/icons/grimmory-book.svg`, copied
+  verbatim from Grimmory's `assets/logo.svg`, AGPL-3.0, credited in `NOTICE`)
+  wearing headphones. The gaps between headphones and book are mask cut-outs,
+  not dark strokes, so they survive single-colour tinting.
 - The palette is centralized in `ui/theme/Theme.kt` via `AudimmoryColors`
   (inherited from Pageless: primary purple `#8B5CF6`, dark background
   `#16141F`, dark surface `#1E1B2E`, JetBrains Mono for brand text).
 - The Settings screen owns the user-facing theme selector and must expose the
   same three options as the web app: `System`, `Dark`, and `Light`.
 - The media-notification small icon is **`R.drawable.ic_stat_audimmory`**, a
-  white-tinted monochrome vector. It is deliberately *not* the launcher art:
-  the launcher art is offset for the adaptive safe zone and looks lopsided at
-  small sizes. When editing it, remember it renders **very small** in the status
-  bar — keep bar gaps wide enough to survive downscaling, and verify by
-  rendering the vector geometry at ~18px before shipping.
-- Launcher icon is adaptive (maskable background + foreground + monochrome
-  themed layer) under `mipmap-*` / `mipmap-anydpi-v26`.
+  white silhouette PNG per density. It is deliberately *not* the launcher art:
+  the launcher art is inset for the adaptive safe zone. It renders **very
+  small** in the status bar, so it uses wider cut-outs (`gap=60`); check the
+  mdpi (24px) render before shipping.
+- Launcher icon is adaptive under `mipmap-*` / `mipmap-anydpi-v26`: the
+  full-bleed artwork is the *background* layer (content inside the 66dp safe
+  zone), the foreground is transparent, and `drawable-*/ic_launcher_monochrome.png`
+  is the themed layer.
 - Debug builds use `applicationIdSuffix = ".debug"`, app label `Audimmory Dev`,
   and debug-only launcher assets under `app/src/debug/res/` (rotated 180deg) so
   the locally installed app is visually distinct and can live alongside a

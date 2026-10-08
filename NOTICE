@@ -20,6 +20,8 @@ Modification notice (GNU GPL v3, section 5(a)):
               audiobooks (for example a directory of MP3 files), and mapping of
               Grimmory shelves, magic shelves, bookmarks, progress and reading
               sessions onto the app's offline-first model.
+  2026-10-08  Replaced the Pageless icons with a new Audimmory logo: the
+              Grimmory book logo wearing headphones (see "Artwork" below).
 
 The full history of changes is recorded in this repository's git history.
 
@@ -28,3 +30,13 @@ projects. "Pageless" and "Grimmory" are the names of their respective
 projects. Grimmory is licensed separately under the GNU Affero General Public
 License v3; Audimmory contains no Grimmory code and talks to it only over its
 network API.
+
+Artwork: the Audimmory logo is derived from the Grimmory logo
+(assets/logo.svg in https://github.com/grimmory-tools/grimmory), which is
+distributed under the GNU Affero General Public License v3. The copied book
+geometry is in scripts/icons/grimmory-book.svg; scripts/icons/make_icons.py
+adds the headphones and generates every icon image from it (launcher,
+themed, notification and in-app icons under app/src/*/res, and the store
+images under fastlane/). Those files are covered by the AGPL-3.0 as well as
+being combined with this GPL-3.0 program, as permitted by section 13 of both
+licenses.

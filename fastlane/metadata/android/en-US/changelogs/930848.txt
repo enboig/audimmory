@@ -1,0 +1,1 @@
+Audimmory now speaks Catalan and Spanish, following your phone's language (on Android 13+ you can pick one in Settings > Language). Clearer sign-in error messages.

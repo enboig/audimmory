@@ -11,6 +11,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import org.audimmory.mobile.R
 import org.audimmory.mobile.data.local.DownloadDao
 import org.audimmory.mobile.data.local.DownloadEntity
 import org.audimmory.mobile.data.repository.LibraryRepository
@@ -34,7 +35,7 @@ class DownloadWorker
         private val libraryRepository: LibraryRepository,
     ) : CoroutineWorker(appContext, params) {
         private val bookId: String? = inputData.getString(KEY_BOOK_ID)
-        private val title: String = inputData.getString(KEY_TITLE) ?: "Audiobook"
+        private val title: String = inputData.getString(KEY_TITLE)?.takeIf { it.isNotBlank() } ?: appContext.getString(R.string.audiobook_fallback_title)
 
         override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(percent = null)
 

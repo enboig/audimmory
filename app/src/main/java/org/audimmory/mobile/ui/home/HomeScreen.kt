@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -70,7 +71,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Audimmory",
+                                stringResource(R.string.app_name),
                                 fontFamily = JetBrainsMono,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -80,7 +81,7 @@ fun HomeScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onOpenDrawer) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.action_menu))
                         }
                     },
                 )
@@ -114,25 +115,30 @@ fun HomeScreen(
         ) {
             when {
                 nothing && state.loading ->
-                    CenterText("Loading…")
+                    CenterText(stringResource(R.string.home_loading))
 
                 nothing && state.error != null ->
-                    CenterText("Couldn't reach the server.\n${state.error}")
+                    CenterText(stringResource(R.string.error_server_unreachable, state.error.orEmpty()))
 
                 nothing ->
-                    CenterText("Nothing here yet.\nAdd books on the server to get started.")
+                    CenterText(stringResource(R.string.home_empty))
 
-                else ->
+                else -> {
+                    val continueListening = stringResource(R.string.home_continue_listening)
+                    val recentlyAdded = stringResource(R.string.home_recently_added)
+                    val listenAgain = stringResource(R.string.home_listen_again)
+                    val downloaded = stringResource(R.string.home_local_books)
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(20.dp),
                     ) {
-                        shelfItem("Continue Listening", shelves.continueListening, onOpenBook)
-                        shelfItem("Recently added", shelves.recentlyAdded, onOpenBook)
-                        shelfItem("Listen Again", shelves.listenAgain, onOpenBook)
-                        shelfItem("Local Books", localBooks, onOpenBook)
+                        shelfItem(continueListening, shelves.continueListening, onOpenBook)
+                        shelfItem(recentlyAdded, shelves.recentlyAdded, onOpenBook)
+                        shelfItem(listenAgain, shelves.listenAgain, onOpenBook)
+                        shelfItem(downloaded, localBooks, onOpenBook)
                     }
+                }
             }
         }
     }

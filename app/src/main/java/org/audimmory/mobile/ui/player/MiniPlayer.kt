@@ -38,12 +38,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import org.audimmory.mobile.R
 import org.audimmory.mobile.core.TimeFormat
+import org.audimmory.mobile.ui.components.displayTitle
 
 private const val OPEN_DRAG_THRESHOLD_PX = 80f
 
@@ -60,7 +63,8 @@ fun MiniPlayer(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val coverUrl by viewModel.coverUrl.collectAsStateWithLifecycle()
-    val chapterTitle by viewModel.currentChapterTitle.collectAsStateWithLifecycle()
+    val chapter by viewModel.currentChapter.collectAsStateWithLifecycle()
+    val chapterTitle = chapter?.displayTitle()
     val window by viewModel.progressWindow.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.connect() }
@@ -110,7 +114,7 @@ fun MiniPlayer(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        chapterTitle?.let { "${state.title ?: ""} | $it" } ?: (state.title ?: "Playing"),
+                        chapterTitle?.let { "${state.title ?: ""} | $it" } ?: (state.title ?: stringResource(R.string.player_playing)),
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -128,16 +132,16 @@ fun MiniPlayer(
 
                 // Transport controls (stop click propagation to the row).
                 IconButton(onClick = viewModel::skipBackward) {
-                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Skip backward")
+                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.action_skip_backward))
                 }
                 FilledIconButton(onClick = viewModel::playPause) {
                     Icon(
                         if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        contentDescription = stringResource(if (state.isPlaying) R.string.action_pause else R.string.action_play),
                     )
                 }
                 IconButton(onClick = viewModel::skipForward) {
-                    Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Skip forward")
+                    Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = stringResource(R.string.action_skip_forward))
                 }
             }
 

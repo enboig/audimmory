@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
@@ -55,14 +56,14 @@ fun AccountScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Account")
+                        Text(stringResource(R.string.nav_account))
                         Spacer(Modifier.width(8.dp))
                         ConnectionStatusIcon()
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
             )
@@ -79,7 +80,7 @@ fun AccountScreen(
             OutlinedTextField(
                 value = state.host,
                 onValueChange = {},
-                label = { Text("Host") },
+                label = { Text(stringResource(R.string.account_host)) },
                 readOnly = true,
                 enabled = false,
                 modifier = Modifier.fillMaxWidth(),
@@ -87,13 +88,13 @@ fun AccountScreen(
             OutlinedTextField(
                 value = state.username,
                 onValueChange = {},
-                label = { Text("Username") },
+                label = { Text(stringResource(R.string.login_username)) },
                 readOnly = true,
                 enabled = false,
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(
-                "Server version: ${state.serverVersion ?: "…"}",
+                stringResource(R.string.account_server_version, state.serverVersion ?: "…"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -106,7 +107,7 @@ fun AccountScreen(
                         .padding(top = 8.dp),
             ) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                Text("Switch Server/User", modifier = Modifier.padding(start = 6.dp))
+                Text(stringResource(R.string.account_switch), modifier = Modifier.padding(start = 6.dp))
             }
 
             Spacer(Modifier.weight(1f))
@@ -120,17 +121,19 @@ fun AccountScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val contributeText = stringResource(R.string.account_contribute)
+                val githubText = stringResource(R.string.github)
                 Text(
                     text =
                         buildAnnotatedString {
-                            append("Report bugs, request features, and contribute on ")
+                            append(contributeText)
                             withStyle(
                                 SpanStyle(
                                     color = MaterialTheme.colorScheme.primary,
                                     textDecoration = TextDecoration.Underline,
                                 ),
                             ) {
-                                append("GitHub")
+                                append(githubText)
                             }
                         },
                     style = MaterialTheme.typography.bodySmall,
@@ -139,7 +142,7 @@ fun AccountScreen(
                 Spacer(Modifier.width(8.dp))
                 Icon(
                     painter = painterResource(R.drawable.ic_github),
-                    contentDescription = "GitHub",
+                    contentDescription = githubText,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp),
                 )

@@ -60,6 +60,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import org.audimmory.mobile.R
 import org.audimmory.mobile.core.Chapters
 import org.audimmory.mobile.core.DateTimeFormat
 import org.audimmory.mobile.core.TimeFormat
@@ -77,6 +80,7 @@ import org.audimmory.mobile.data.local.BookmarkEntity
 import org.audimmory.mobile.data.local.ProgressEntity
 import org.audimmory.mobile.ui.components.AudimmoryRefreshIndicator
 import org.audimmory.mobile.ui.components.ConnectionStatusIcon
+import org.audimmory.mobile.ui.components.displayTitle
 import org.audimmory.mobile.ui.library.LibraryFilterCategory
 import java.time.ZoneId
 
@@ -150,7 +154,7 @@ fun BookDetailScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(book?.title ?: "Book")
+                        Text(book?.title ?: stringResource(R.string.book_fallback_title))
                         androidx.compose.foundation.layout
                             .Spacer(Modifier.width(8.dp))
                         ConnectionStatusIcon()
@@ -158,12 +162,12 @@ fun BookDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = onOpenHistory) {
-                        Icon(Icons.Default.History, contentDescription = "Listening history")
+                        Icon(Icons.Default.History, contentDescription = stringResource(R.string.book_listening_history))
                     }
                 },
             )
@@ -236,10 +240,10 @@ fun BookDetailScreen(
                         val playing = isActive && player.isPlaying
                         val label =
                             when {
-                                playing -> "Pause"
-                                isActive -> "Play"
-                                (progress?.currentSeconds ?: 0.0) > 0 -> "Resume"
-                                else -> "Play"
+                                playing -> stringResource(R.string.action_pause)
+                                isActive -> stringResource(R.string.action_play)
+                                (progress?.currentSeconds ?: 0.0) > 0 -> stringResource(R.string.action_resume)
+                                else -> stringResource(R.string.action_play)
                             }
                         Button(
                             onClick = viewModel::playPause,
@@ -258,12 +262,12 @@ fun BookDetailScreen(
                             ProgressPill(
                                 finished = p.finished,
                                 percent = progressPercent(p, isActive, player.positionMs),
-                                remaining = remainingLabel(p, b.durationSeconds, isActive, player.positionMs),
+                                remaining = remainingDuration(p, b.durationSeconds, isActive, player.positionMs),
                                 currentChapterTitle =
                                     if (!p.finished) {
                                         chapters
                                             .getOrNull(currentChapterIndex ?: -1)
-                                            ?.let { it.title ?: "Chapter ${it.index + 1}" }
+                                            ?.displayTitle()
                                     } else {
                                         null
                                     },
@@ -289,15 +293,15 @@ fun BookDetailScreen(
                     item {
                         Column(modifier = Modifier.padding(top = 8.dp)) {
                             MetadataLinksRow(
-                                "Authors",
+                                stringResource(R.string.category_authors),
                                 filterMetadata[LibraryFilterCategory.AUTHORS].orEmpty(),
                             ) { onOpenLibraryFilter(LibraryFilterCategory.AUTHORS, it) }
                             MetadataLinksRow(
-                                "Narrators",
+                                stringResource(R.string.category_narrators),
                                 filterMetadata[LibraryFilterCategory.NARRATORS].orEmpty(),
                             ) { onOpenLibraryFilter(LibraryFilterCategory.NARRATORS, it) }
                             MetadataLinksRow(
-                                "Series",
+                                stringResource(R.string.category_series),
                                 if (series.isNotEmpty()) {
                                     series.map { BookMetadataLink(it.id, seriesLabel(it.name, it.sequence)) }
                                 } else {
@@ -305,27 +309,27 @@ fun BookDetailScreen(
                                 },
                             ) { onOpenLibraryFilter(LibraryFilterCategory.SERIES, it) }
                             MetadataLinksRow(
-                                "Shelves",
+                                stringResource(R.string.category_shelves),
                                 filterMetadata[LibraryFilterCategory.COLLECTIONS].orEmpty(),
                             ) { onOpenLibraryFilter(LibraryFilterCategory.COLLECTIONS, it) }
                             MetadataLinksRow(
-                                "Magic shelves",
+                                stringResource(R.string.category_magic_shelves),
                                 filterMetadata[LibraryFilterCategory.PLAYLISTS].orEmpty(),
                             ) { onOpenLibraryFilter(LibraryFilterCategory.PLAYLISTS, it) }
                             MetadataLinksRow(
-                                "Genres",
+                                stringResource(R.string.category_genres),
                                 filterMetadata[LibraryFilterCategory.GENRES].orEmpty(),
                             ) { onOpenLibraryFilter(LibraryFilterCategory.GENRES, it) }
                             MetadataLinksRow(
-                                "Publisher",
+                                stringResource(R.string.meta_publisher),
                                 filterMetadata[LibraryFilterCategory.PUBLISHERS].orEmpty(),
                             ) { onOpenLibraryFilter(LibraryFilterCategory.PUBLISHERS, it) }
                             MetadataLinksRow(
-                                "Language",
+                                stringResource(R.string.meta_language),
                                 filterMetadata[LibraryFilterCategory.LANGUAGES].orEmpty(),
                             ) { onOpenLibraryFilter(LibraryFilterCategory.LANGUAGES, it) }
-                            MetadataRow("Duration", TimeFormat.duration(b.durationSeconds))
-                            MetadataRow("Publish year", publishYear(b.publishedDate, b.publishedYear))
+                            MetadataRow(stringResource(R.string.meta_duration), TimeFormat.duration(b.durationSeconds))
+                            MetadataRow(stringResource(R.string.meta_publish_year), publishYear(b.publishedDate, b.publishedYear))
                         }
                     }
 
@@ -347,12 +351,12 @@ fun BookDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "Bookmarks (${bookmarks.size})",
+                            stringResource(R.string.bookmarks_with_count, bookmarks.size),
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { showAddBookmark = true }) {
-                                Icon(Icons.Default.BookmarkAdd, contentDescription = "Add bookmark")
+                                Icon(Icons.Default.BookmarkAdd, contentDescription = stringResource(R.string.action_add_bookmark))
                             }
                             Icon(
                                 if (bookmarksExpanded) {
@@ -362,9 +366,9 @@ fun BookDetailScreen(
                                 },
                                 contentDescription =
                                     if (bookmarksExpanded) {
-                                        "Collapse bookmarks"
+                                        stringResource(R.string.bookmarks_collapse)
                                     } else {
-                                        "Expand bookmarks"
+                                        stringResource(R.string.bookmarks_expand)
                                     },
                             )
                         }
@@ -374,7 +378,7 @@ fun BookDetailScreen(
                     if (bookmarks.isEmpty()) {
                         item {
                             Text(
-                                "No bookmarks yet.",
+                                stringResource(R.string.bookmarks_empty),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(vertical = 6.dp),
@@ -384,7 +388,8 @@ fun BookDetailScreen(
                         groupedBookmarks(bookmarks, chapters).forEach { group ->
                             item(key = "bookmark-chapter-${group.chapterKey}") {
                                 Text(
-                                    group.title,
+                                    group.chapter?.displayTitle()
+                                        ?: stringResource(if (chapters.isEmpty()) R.string.bookmarks else R.string.chapter_unknown),
                                     style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold,
@@ -410,7 +415,7 @@ fun BookDetailScreen(
                                         modifier = Modifier.padding(end = 12.dp),
                                     )
                                     Text(
-                                        bm.note ?: "Bookmark",
+                                        bm.note ?: stringResource(R.string.bookmark_fallback_title),
                                         style = MaterialTheme.typography.bodyLarge,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -419,7 +424,7 @@ fun BookDetailScreen(
                                     IconButton(onClick = { viewModel.deleteBookmark(bm.id) }) {
                                         Icon(
                                             Icons.Default.Delete,
-                                            contentDescription = "Delete bookmark",
+                                            contentDescription = stringResource(R.string.action_delete_bookmark),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
@@ -442,7 +447,7 @@ fun BookDetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "Chapters (${chapters.size})",
+                                stringResource(R.string.chapters_with_count, chapters.size),
                                 style = MaterialTheme.typography.titleMedium,
                             )
                             Icon(
@@ -453,9 +458,9 @@ fun BookDetailScreen(
                                 },
                                 contentDescription =
                                     if (chaptersExpanded) {
-                                        "Collapse chapters"
+                                        stringResource(R.string.chapters_collapse)
                                     } else {
-                                        "Expand chapters"
+                                        stringResource(R.string.chapters_expand)
                                     },
                             )
                         }
@@ -490,7 +495,7 @@ fun BookDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
-                                    ch.title ?: "Chapter ${ch.index + 1}",
+                                    ch.displayTitle(),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color =
                                         if (isCurrent) {
@@ -544,7 +549,7 @@ fun BookDetailScreen(
                             },
                             bookmark.positionSeconds,
                         ) ?: -1,
-                    )?.let { it.title ?: "Chapter ${it.index + 1}" }
+                    )?.displayTitle()
             BookmarkActionDialog(
                 bookId = id,
                 bookmark = bookmark,
@@ -572,7 +577,7 @@ private fun ChapterTableHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            "Title",
+            stringResource(R.string.column_title),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Bold,
@@ -580,7 +585,7 @@ private fun ChapterTableHeader(
         )
         if (showStart) {
             Text(
-                "Start",
+                stringResource(R.string.column_start),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
@@ -590,7 +595,7 @@ private fun ChapterTableHeader(
         }
         if (showDuration) {
             Text(
-                "Duration",
+                stringResource(R.string.column_duration),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
@@ -661,20 +666,20 @@ private fun AddBookmarkDialog(
     var note by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add bookmark at $positionLabel") },
+        title = { Text(stringResource(R.string.bookmark_add_at, positionLabel)) },
         text = {
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
-                label = { Text("Note (optional)") },
+                label = { Text(stringResource(R.string.bookmark_note_label)) },
                 singleLine = true,
             )
         },
         confirmButton = {
-            TextButton(onClick = { onAdd(note.ifBlank { null }) }) { Text("Add") }
+            TextButton(onClick = { onAdd(note.ifBlank { null }) }) { Text(stringResource(R.string.action_add)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -704,14 +709,14 @@ private fun BookmarkActionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Bookmark at ${TimeFormat.clock(bookmark.positionSeconds)}") },
+        title = { Text(stringResource(R.string.bookmark_at, TimeFormat.clock(bookmark.positionSeconds))) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 bookmark.note?.let {
                     Text(it, style = MaterialTheme.typography.bodyMedium)
                 }
                 Text(
-                    chapterTitle ?: "Preview this bookmark without changing book progress.",
+                    chapterTitle ?: stringResource(R.string.bookmark_preview_hint),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 2,
@@ -727,10 +732,10 @@ private fun BookmarkActionDialog(
                         IconButton(onClick = { previewViewModel.seekBy(-previewState.jumpBackwardSeconds * 1000L) }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Undo,
-                                contentDescription = "Jump preview backward ${previewState.jumpBackwardSeconds}s",
+                                contentDescription = pluralStringResource(R.plurals.preview_jump_backward, previewState.jumpBackwardSeconds, previewState.jumpBackwardSeconds),
                             )
                         }
-                        Text("${previewState.jumpBackwardSeconds}s", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.seconds_short, previewState.jumpBackwardSeconds), style = MaterialTheme.typography.labelSmall)
                     }
                     FilledIconButton(
                         onClick = previewViewModel::playPause,
@@ -738,17 +743,17 @@ private fun BookmarkActionDialog(
                     ) {
                         Icon(
                             if (previewState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (previewState.isPlaying) "Pause preview" else "Play preview",
+                            contentDescription = stringResource(if (previewState.isPlaying) R.string.preview_pause else R.string.preview_play),
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         IconButton(onClick = { previewViewModel.seekBy(previewState.jumpForwardSeconds * 1000L) }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Redo,
-                                contentDescription = "Jump preview forward ${previewState.jumpForwardSeconds}s",
+                                contentDescription = pluralStringResource(R.plurals.preview_jump_forward, previewState.jumpForwardSeconds, previewState.jumpForwardSeconds),
                             )
                         }
-                        Text("${previewState.jumpForwardSeconds}s", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.seconds_short, previewState.jumpForwardSeconds), style = MaterialTheme.typography.labelSmall)
                     }
                 }
 
@@ -775,17 +780,18 @@ private fun BookmarkActionDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onPlay) { Text("Play from here") }
+            TextButton(onClick = onPlay) { Text(stringResource(R.string.bookmark_play_from_here)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
 
 private data class BookmarkChapterGroup(
     val chapterKey: String,
-    val title: String,
+    /** Null for bookmarks outside every chapter, or when the book has no chapters. */
+    val chapter: org.audimmory.mobile.data.local.ChapterEntity?,
     val bookmarks: List<BookmarkEntity>,
 )
 
@@ -795,7 +801,7 @@ private fun groupedBookmarks(
 ): List<BookmarkChapterGroup> {
     val sortedBookmarks = bookmarks.sortedBy { it.positionSeconds }
     if (chapters.isEmpty()) {
-        return listOf(BookmarkChapterGroup("unknown", "Bookmarks", sortedBookmarks))
+        return listOf(BookmarkChapterGroup("unknown", null, sortedBookmarks))
     }
 
     val spans =
@@ -813,7 +819,7 @@ private fun groupedBookmarks(
             val chapter = chapterIndex?.let { chapters.getOrNull(it) }
             BookmarkChapterGroup(
                 chapterKey = chapter?.id ?: "unknown",
-                title = chapter?.let { it.title ?: "Chapter ${it.index + 1}" } ?: "Unknown chapter",
+                chapter = chapter,
                 bookmarks = groupBookmarks,
             )
         }
@@ -853,12 +859,12 @@ private fun DownloadControl(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        fraction?.let { "Downloading ${(it * 100).toInt()}%" } ?: "Downloading…",
+                        fraction?.let { stringResource(R.string.download_progress, (it * 100).toInt()) } ?: stringResource(R.string.downloading),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     TextButton(onClick = onCancel) {
                         Icon(Icons.Default.Close, contentDescription = null)
-                        Text("Cancel")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             }
@@ -875,16 +881,16 @@ private fun DownloadControl(
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                         )
-                        Text("Downloaded", modifier = Modifier.padding(start = 6.dp))
+                        Text(stringResource(R.string.downloaded), modifier = Modifier.padding(start = 6.dp))
                     }
-                    TextButton(onClick = onDelete) { Text("Remove") }
+                    TextButton(onClick = onDelete) { Text(stringResource(R.string.action_remove)) }
                 }
             }
 
             // Grimmory's "download" permission also governs offline copies.
             !allowed -> {
                 Text(
-                    "Offline download is not enabled for your Grimmory account.",
+                    stringResource(R.string.download_not_allowed),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -893,7 +899,7 @@ private fun DownloadControl(
             else -> {
                 Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Download, contentDescription = null)
-                    Text("Download for offline", modifier = Modifier.padding(start = 6.dp))
+                    Text(stringResource(R.string.download_for_offline), modifier = Modifier.padding(start = 6.dp))
                 }
             }
         }
@@ -1048,8 +1054,8 @@ internal fun progressPercent(
     return ((current / duration) * 100).toInt().coerceIn(0, 100)
 }
 
-/** "N remaining" label; empty when finished or duration unknown. */
-internal fun remainingLabel(
+/** Time left, e.g. "12m"; null when finished or duration unknown. */
+internal fun remainingDuration(
     progress: ProgressEntity,
     durationSeconds: Double,
     isActive: Boolean,
@@ -1058,7 +1064,7 @@ internal fun remainingLabel(
     if (progress.finished || durationSeconds <= 0.0) return null
     val current = if (isActive) playerPositionMs / 1000.0 else progress.currentSeconds
     val remaining = (durationSeconds - current).coerceAtLeast(0.0)
-    return "${TimeFormat.duration(remaining)} remaining"
+    return TimeFormat.duration(remaining)
 }
 
 /** A progress panel mirroring the web app: finished badge or percent + bar. */
@@ -1097,7 +1103,7 @@ private fun ProgressPill(
                     )
                     androidx.compose.foundation.layout
                         .Spacer(Modifier.width(6.dp))
-                    Text("Finished", style = MaterialTheme.typography.titleSmall, color = finishedColor)
+                    Text(stringResource(R.string.progress_finished), style = MaterialTheme.typography.titleSmall, color = finishedColor)
                     finishedAt?.let {
                         androidx.compose.foundation.layout
                             .Spacer(Modifier.width(6.dp))
@@ -1106,15 +1112,15 @@ private fun ProgressPill(
                 }
             } else {
                 Text(
-                    "Your Progress: $percent%",
+                    stringResource(R.string.progress_yours, percent),
                     style = MaterialTheme.typography.titleSmall,
                 )
                 remaining?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = muted)
+                    Text(stringResource(R.string.progress_remaining, it), style = MaterialTheme.typography.bodyMedium, color = muted)
                 }
                 currentChapterTitle?.let {
                     Text(
-                        "Current chapter: $it",
+                        stringResource(R.string.progress_current_chapter, it),
                         style = MaterialTheme.typography.bodyMedium,
                         color = muted,
                         maxLines = 1,
@@ -1124,7 +1130,7 @@ private fun ProgressPill(
             }
 
             startedAt?.let {
-                Text("Started $it", style = MaterialTheme.typography.bodyMedium, color = muted)
+                Text(stringResource(R.string.progress_started_on, it), style = MaterialTheme.typography.bodyMedium, color = muted)
             }
 
             LinearProgressIndicator(
@@ -1168,7 +1174,7 @@ private fun DescriptionText(
         )
         if (hasOverflow || expanded) {
             Text(
-                text = if (expanded) "Read less" else "Read more",
+                text = stringResource(if (expanded) R.string.read_less else R.string.read_more),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier =

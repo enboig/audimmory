@@ -359,6 +359,32 @@ on the JVM.
   calling `AudimmoryTheme`. Keep new app-wide visual preferences in this same
   DataStore unless they belong to server-synced account settings.
 
+## Translations
+
+- The app ships **English** (`res/values/`), **Catalan** (`values-ca/`) and
+  **Spanish** (`values-es/`), all maintained in the repository; there is no
+  external translation service. Never hard-code user-visible text in Kotlin:
+  composables use `stringResource`/`pluralStringResource`, code with a
+  `Context` (notifications, toasts, workers) uses `getString`. Counts use
+  `<plurals>` (ca/es also carry a `many` item, matching CLDR).
+- When adding a string, add it to **all three** files in the same position.
+  Lint's `MissingTranslation` must stay clean.
+- Style: **Catalan uses the imperative** for actions ("Descarrega",
+  "Cancel·la", "Inicia la sessió"); **Spanish uses the infinitive**
+  ("Descargar", "Cancelar", "Iniciar sesión"), including instructions. Spanish
+  follows the Grimmory web app's terms: *estante*, *estante mágico*,
+  *marcador*, *editorial*, *narrador*. Catalan uses *prestatge*, *prestatge
+  màgic*, *marcador*.
+- Not translated on purpose: server data (titles, author/genre names,
+  Grimmory's auto-generated "Bookmark at …" titles), the stored history event
+  names (`"Play"`, `"Pause"`…, shown through `BookHistoryScreen`'s `label()`),
+  and the English `label`s on `LibraryFilterCategory`/`LibrarySort`, which
+  keep the filter/sort engines Android-free; `ui/library/LibraryLabels.kt`
+  maps them to resources for display. `TimeFormat` units (`1h 2m`) stay as
+  they are in every language.
+- `generateLocaleConfig` (with `res/resources.properties`) publishes the
+  languages to Android 13+'s per-app language setting; Settings links to it.
+
 ## UI conventions
 
 - Jetpack Compose + Material3. Primary nav is **top tabs** (Home/Library) +

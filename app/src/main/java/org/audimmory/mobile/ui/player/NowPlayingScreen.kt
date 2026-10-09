@@ -61,6 +61,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,11 +70,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import org.audimmory.mobile.R
 import org.audimmory.mobile.core.Chapters
 import org.audimmory.mobile.core.TimeFormat
 import org.audimmory.mobile.data.local.BookmarkEntity
 import org.audimmory.mobile.data.local.ChapterEntity
 import org.audimmory.mobile.ui.book.BookmarkPreviewViewModel
+import org.audimmory.mobile.ui.components.displayTitle
 
 private val SPEEDS = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
 private const val CLOSE_DRAG_THRESHOLD_PX = 120f
@@ -109,10 +113,10 @@ fun NowPlayingScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Close player")
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.player_close))
                 }
                 Text(
-                    state.title ?: "Now Playing",
+                    state.title ?: stringResource(R.string.player_now_playing),
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
@@ -165,7 +169,7 @@ fun NowPlayingScreen(
             Spacer(Modifier.height(20.dp))
 
             Text(
-                currentChapter?.let { it.title ?: "Chapter ${it.index + 1}" } ?: (state.title ?: ""),
+                currentChapter?.displayTitle() ?: (state.title ?: ""),
                 style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
@@ -216,12 +220,12 @@ fun NowPlayingScreen(
                     onClick = { viewModel.jumpChapter(forward = false) },
                     enabled = chapters.isNotEmpty(),
                 ) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Previous chapter", modifier = Modifier.size(28.dp))
+                    Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.chapter_previous), modifier = Modifier.size(28.dp))
                 }
                 SkipButton(
                     icon = Icons.AutoMirrored.Filled.Undo,
                     seconds = settings.jumpBackwardSeconds,
-                    contentDescription = "Back ${settings.jumpBackwardSeconds}s",
+                    contentDescription = pluralStringResource(R.plurals.notification_action_jump_backward, settings.jumpBackwardSeconds, settings.jumpBackwardSeconds),
                     onClick = viewModel::skipBackward,
                 )
                 FilledIconButton(
@@ -230,21 +234,21 @@ fun NowPlayingScreen(
                 ) {
                     Icon(
                         if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        contentDescription = stringResource(if (state.isPlaying) R.string.action_pause else R.string.action_play),
                         modifier = Modifier.size(36.dp),
                     )
                 }
                 SkipButton(
                     icon = Icons.AutoMirrored.Filled.Redo,
                     seconds = settings.jumpForwardSeconds,
-                    contentDescription = "Forward ${settings.jumpForwardSeconds}s",
+                    contentDescription = pluralStringResource(R.plurals.notification_action_jump_forward, settings.jumpForwardSeconds, settings.jumpForwardSeconds),
                     onClick = viewModel::skipForward,
                 )
                 IconButton(
                     onClick = { viewModel.jumpChapter(forward = true) },
                     enabled = chapters.isNotEmpty(),
                 ) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Next chapter", modifier = Modifier.size(28.dp))
+                    Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.chapter_next), modifier = Modifier.size(28.dp))
                 }
             }
 
@@ -257,16 +261,16 @@ fun NowPlayingScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = { showBookmarks = true }) {
-                    Icon(Icons.Default.Bookmark, contentDescription = "Bookmarks")
+                    Icon(Icons.Default.Bookmark, contentDescription = stringResource(R.string.bookmarks))
                 }
                 IconButton(onClick = { showSpeed = true }) {
                     Text(
-                        "${state.speed.cleanFormat()}x",
+                        stringResource(R.string.speed_value, state.speed.cleanFormat()),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
                 IconButton(onClick = { showChapters = true }, enabled = chapters.isNotEmpty()) {
-                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Chapters")
+                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.chapters))
                 }
             }
         }
@@ -325,7 +329,7 @@ fun NowPlayingScreen(
                             },
                             bookmark.positionSeconds,
                         ) ?: -1,
-                    )?.let { it.title ?: "Chapter ${it.index + 1}" }
+                    )?.displayTitle()
 
             BookmarkActionDialog(
                 bookId = bookId,
@@ -364,7 +368,7 @@ private fun SkipButton(
         IconButton(onClick = onClick) {
             Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(30.dp))
         }
-        Text("${seconds}s", style = MaterialTheme.typography.labelSmall)
+        Text(stringResource(R.string.seconds_short, seconds), style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -439,7 +443,7 @@ private fun ChaptersSheet(
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
         Text(
-            "Chapters",
+            stringResource(R.string.chapters),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
@@ -465,7 +469,7 @@ private fun ChaptersSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        ch.title ?: "Chapter ${ch.index + 1}",
+                        ch.displayTitle(),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
@@ -501,7 +505,7 @@ private fun ChapterTableHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            "Title",
+            stringResource(R.string.column_title),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Bold,
@@ -509,7 +513,7 @@ private fun ChapterTableHeader(
         )
         if (showStart) {
             Text(
-                "Start",
+                stringResource(R.string.column_start),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
@@ -519,7 +523,7 @@ private fun ChapterTableHeader(
         }
         if (showDuration) {
             Text(
-                "Duration",
+                stringResource(R.string.column_duration),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
@@ -597,14 +601,14 @@ private fun BookmarksSheet(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Bookmarks", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.bookmarks), style = MaterialTheme.typography.titleMedium)
             IconButton(onClick = onAdd) {
-                Icon(Icons.Default.BookmarkAdd, contentDescription = "Add bookmark")
+                Icon(Icons.Default.BookmarkAdd, contentDescription = stringResource(R.string.action_add_bookmark))
             }
         }
         if (bookmarks.isEmpty()) {
             Text(
-                "No bookmarks yet.",
+                stringResource(R.string.bookmarks_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),
@@ -614,7 +618,8 @@ private fun BookmarksSheet(
                 groupedBookmarks(bookmarks, chapters).forEach { group ->
                     item(key = "chapter-${group.chapterKey}") {
                         Text(
-                            group.title,
+                            group.chapter?.displayTitle()
+                                ?: stringResource(if (chapters.isEmpty()) R.string.bookmarks else R.string.chapter_unknown),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
@@ -639,7 +644,7 @@ private fun BookmarksSheet(
                                 modifier = Modifier.padding(end = 12.dp),
                             )
                             Text(
-                                bm.note ?: "Bookmark",
+                                bm.note ?: stringResource(R.string.bookmark_fallback_title),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
@@ -647,7 +652,7 @@ private fun BookmarksSheet(
                             IconButton(onClick = { onDelete(bm) }) {
                                 Icon(
                                     Icons.Default.Delete,
-                                    contentDescription = "Delete bookmark",
+                                    contentDescription = stringResource(R.string.action_delete_bookmark),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
@@ -663,7 +668,8 @@ private fun BookmarksSheet(
 
 private data class BookmarkChapterGroup(
     val chapterKey: String,
-    val title: String,
+    /** Null for bookmarks outside every chapter, or when the book has no chapters. */
+    val chapter: ChapterEntity?,
     val bookmarks: List<BookmarkEntity>,
 )
 
@@ -673,7 +679,7 @@ private fun groupedBookmarks(
 ): List<BookmarkChapterGroup> {
     val sortedBookmarks = bookmarks.sortedBy { it.positionSeconds }
     if (chapters.isEmpty()) {
-        return listOf(BookmarkChapterGroup("unknown", "Bookmarks", sortedBookmarks))
+        return listOf(BookmarkChapterGroup("unknown", null, sortedBookmarks))
     }
 
     val spans =
@@ -691,7 +697,7 @@ private fun groupedBookmarks(
             val chapter = chapterIndex?.let { chapters.getOrNull(it) }
             BookmarkChapterGroup(
                 chapterKey = chapter?.id ?: "unknown",
-                title = chapter?.let { it.title ?: "Chapter ${it.index + 1}" } ?: "Unknown chapter",
+                chapter = chapter,
                 bookmarks = groupBookmarks,
             )
         }
@@ -722,14 +728,14 @@ private fun BookmarkActionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Bookmark at ${TimeFormat.clock(bookmark.positionSeconds)}") },
+        title = { Text(stringResource(R.string.bookmark_at, TimeFormat.clock(bookmark.positionSeconds))) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 bookmark.note?.let {
                     Text(it, style = MaterialTheme.typography.bodyMedium)
                 }
                 Text(
-                    chapterTitle ?: "Preview this bookmark without changing book progress.",
+                    chapterTitle ?: stringResource(R.string.bookmark_preview_hint),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 2,
@@ -745,10 +751,10 @@ private fun BookmarkActionDialog(
                         IconButton(onClick = { previewViewModel.seekBy(-previewState.jumpBackwardSeconds * 1000L) }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Undo,
-                                contentDescription = "Jump preview backward ${previewState.jumpBackwardSeconds}s",
+                                contentDescription = pluralStringResource(R.plurals.preview_jump_backward, previewState.jumpBackwardSeconds, previewState.jumpBackwardSeconds),
                             )
                         }
-                        Text("${previewState.jumpBackwardSeconds}s", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.seconds_short, previewState.jumpBackwardSeconds), style = MaterialTheme.typography.labelSmall)
                     }
                     FilledIconButton(
                         onClick = previewViewModel::playPause,
@@ -756,17 +762,17 @@ private fun BookmarkActionDialog(
                     ) {
                         Icon(
                             if (previewState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (previewState.isPlaying) "Pause preview" else "Play preview",
+                            contentDescription = stringResource(if (previewState.isPlaying) R.string.preview_pause else R.string.preview_play),
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         IconButton(onClick = { previewViewModel.seekBy(previewState.jumpForwardSeconds * 1000L) }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Redo,
-                                contentDescription = "Jump preview forward ${previewState.jumpForwardSeconds}s",
+                                contentDescription = pluralStringResource(R.plurals.preview_jump_forward, previewState.jumpForwardSeconds, previewState.jumpForwardSeconds),
                             )
                         }
-                        Text("${previewState.jumpForwardSeconds}s", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.seconds_short, previewState.jumpForwardSeconds), style = MaterialTheme.typography.labelSmall)
                     }
                 }
 
@@ -793,10 +799,10 @@ private fun BookmarkActionDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onPlay) { Text("Play from here") }
+            TextButton(onClick = onPlay) { Text(stringResource(R.string.bookmark_play_from_here)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -810,7 +816,7 @@ private fun SpeedSheet(
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
         Text(
-            "Playback speed",
+            stringResource(R.string.player_speed),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
@@ -823,7 +829,7 @@ private fun SpeedSheet(
                         .padding(horizontal = 16.dp, vertical = 14.dp),
             ) {
                 Text(
-                    "${s.cleanFormat()}x",
+                    stringResource(R.string.speed_value, s.cleanFormat()),
                     color = if (s == current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     fontWeight = if (s == current) FontWeight.Bold else FontWeight.Normal,
                 )
@@ -842,17 +848,17 @@ private fun AddBookmarkDialog(
     var note by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add bookmark at $positionLabel") },
+        title = { Text(stringResource(R.string.bookmark_add_at, positionLabel)) },
         text = {
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
-                label = { Text("Note (optional)") },
+                label = { Text(stringResource(R.string.bookmark_note_label)) },
                 singleLine = true,
             )
         },
-        confirmButton = { TextButton(onClick = { onAdd(note.ifBlank { null }) }) { Text("Add") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onAdd(note.ifBlank { null }) }) { Text(stringResource(R.string.action_add)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 

@@ -126,7 +126,7 @@ class BookmarkPreviewViewModel
                             jumpBackwardSeconds = it.jumpBackwardSeconds,
                             jumpForwardSeconds = it.jumpForwardSeconds,
                             bookmarkContextSeconds = it.bookmarkContextSeconds,
-                            error = error.message ?: "Preview failed",
+                            error = error.message ?: error.javaClass.simpleName,
                         )
                     }
                 }

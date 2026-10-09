@@ -163,6 +163,13 @@ android {
         buildConfig = true
     }
 
+    // Lists the app's languages (from the values-* folders and
+    // res/resources.properties) in the manifest, so Android 13+ offers a
+    // per-app language choice in system settings.
+    androidResources {
+        generateLocaleConfig = true
+    }
+
     lint {
         // Media3 @UnstableApi usage is opted in explicitly at each call site's
         // class (@OptIn(UnstableApi::class)), so the default checks apply.

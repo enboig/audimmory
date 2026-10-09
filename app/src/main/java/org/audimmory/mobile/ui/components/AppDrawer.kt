@@ -20,7 +20,9 @@ import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import org.audimmory.mobile.R
 
 /** Destinations reachable from the app drawer. */
 enum class DrawerDestination { HOME, SERIES, COLLECTIONS, PLAYLISTS, ACCOUNT, SETTINGS }
@@ -44,7 +46,7 @@ fun AppDrawerContent(
     ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
-                text = username?.let { "Welcome, $it" } ?: "Audimmory",
+                text = username?.let { stringResource(R.string.drawer_welcome, it) } ?: stringResource(R.string.app_name),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(16.dp),
@@ -53,7 +55,7 @@ fun AppDrawerContent(
             Spacer(Modifier.padding(top = 8.dp))
 
             NavigationDrawerItem(
-                label = { Text("Home") },
+                label = { Text(stringResource(R.string.nav_home)) },
                 icon = { Icon(Icons.Default.Home, contentDescription = null) },
                 selected = false,
                 colors = itemColors,
@@ -61,7 +63,7 @@ fun AppDrawerContent(
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
             NavigationDrawerItem(
-                label = { Text("Series") },
+                label = { Text(stringResource(R.string.nav_series)) },
                 icon = { Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = null) },
                 selected = false,
                 colors = itemColors,
@@ -69,7 +71,7 @@ fun AppDrawerContent(
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
             NavigationDrawerItem(
-                label = { Text("Shelves") },
+                label = { Text(stringResource(R.string.nav_shelves)) },
                 icon = { Icon(Icons.Default.GridView, contentDescription = null) },
                 selected = false,
                 colors = itemColors,
@@ -77,7 +79,7 @@ fun AppDrawerContent(
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
             NavigationDrawerItem(
-                label = { Text("Magic shelves") },
+                label = { Text(stringResource(R.string.nav_magic_shelves)) },
                 icon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
                 selected = false,
                 colors = itemColors,
@@ -85,7 +87,7 @@ fun AppDrawerContent(
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
             NavigationDrawerItem(
-                label = { Text("Account") },
+                label = { Text(stringResource(R.string.nav_account)) },
                 icon = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
                 selected = false,
                 colors = itemColors,
@@ -93,7 +95,7 @@ fun AppDrawerContent(
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
             NavigationDrawerItem(
-                label = { Text("Settings") },
+                label = { Text(stringResource(R.string.nav_settings)) },
                 icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                 selected = false,
                 colors = itemColors,

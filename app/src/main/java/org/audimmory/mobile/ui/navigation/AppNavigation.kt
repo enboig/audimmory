@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.audimmory.mobile.R
 import org.audimmory.mobile.data.repository.AuthRepository
 import org.audimmory.mobile.ui.account.AccountScreen
 import org.audimmory.mobile.ui.book.BookDetailScreen
@@ -213,7 +214,7 @@ fun AppNavigation(rootViewModel: RootViewModel = hiltViewModel()) {
                     else -> {
                         lastBackPress.longValue = System.currentTimeMillis()
                         Toast
-                            .makeText(context, "Press back again to exit", Toast.LENGTH_SHORT)
+                            .makeText(context, R.string.press_back_again_to_exit, Toast.LENGTH_SHORT)
                             .show()
                     }
                 }

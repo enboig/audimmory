@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -59,7 +60,7 @@ fun LoginScreen(
             Brand()
 
             Text(
-                "Sign in to your Grimmory server",
+                stringResource(R.string.login_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
@@ -67,7 +68,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = state.serverUrl,
                 onValueChange = viewModel::onServerUrlChange,
-                label = { Text("Server URL") },
+                label = { Text(stringResource(R.string.login_server_url)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 modifier = Modifier.fillMaxWidth(),
@@ -75,7 +76,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = state.username,
                 onValueChange = viewModel::onUsernameChange,
-                label = { Text("Username") },
+                label = { Text(stringResource(R.string.login_username)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 modifier = Modifier.fillMaxWidth(),
@@ -83,7 +84,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = state.password,
                 onValueChange = viewModel::onPasswordChange,
-                label = { Text("Password") },
+                label = { Text(stringResource(R.string.login_password)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -91,7 +92,14 @@ fun LoginScreen(
             )
 
             state.error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
+                val message =
+                    when (it) {
+                        LoginError.MissingFields -> stringResource(R.string.login_error_missing_fields)
+                        LoginError.Credentials -> stringResource(R.string.login_error_credentials)
+                        LoginError.Unreachable -> stringResource(R.string.login_error_unreachable)
+                        is LoginError.Other -> stringResource(R.string.login_error_generic, it.detail)
+                    }
+                Text(message, color = MaterialTheme.colorScheme.error)
             }
 
             Button(
@@ -102,7 +110,7 @@ fun LoginScreen(
                 if (state.loading) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 } else {
-                    Text("Sign in")
+                    Text(stringResource(R.string.login_sign_in))
                 }
             }
         }
@@ -126,7 +134,7 @@ private fun Brand() {
         )
         Spacer(Modifier.width(12.dp))
         Text(
-            "Audimmory",
+            stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium,
             fontFamily = JetBrainsMono,
             fontWeight = FontWeight.Bold,

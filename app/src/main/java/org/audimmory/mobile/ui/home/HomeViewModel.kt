@@ -82,7 +82,7 @@ class HomeViewModel
                         _state.update { it.copy(loading = false, shelves = shelves) }
                     },
                     onFailure = { e ->
-                        _state.update { it.copy(loading = false, error = e.message ?: "Failed to load") }
+                        _state.update { it.copy(loading = false, error = e.message ?: e.javaClass.simpleName) }
                     },
                 )
             }

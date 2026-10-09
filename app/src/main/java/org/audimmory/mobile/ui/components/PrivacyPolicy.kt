@@ -22,7 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import org.audimmory.mobile.R
 
 /**
  * Canonical location of the published privacy policy.
@@ -51,7 +53,7 @@ private fun openPrivacyPolicy(context: Context) {
         Toast
             .makeText(
                 context,
-                "No app can open $PRIVACY_POLICY_URL",
+                context.getString(R.string.privacy_no_browser, PRIVACY_POLICY_URL),
                 Toast.LENGTH_LONG,
             ).show()
     }
@@ -71,16 +73,16 @@ fun PrivacyPolicyRow(modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text("Privacy policy", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.privacy_policy), style = MaterialTheme.typography.bodyLarge)
             Text(
-                "What the app sends to your server, and what stays on this device.",
+                stringResource(R.string.privacy_policy_summary),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Icon(
             Icons.AutoMirrored.Filled.OpenInNew,
-            contentDescription = "Opens in your browser",
+            contentDescription = stringResource(R.string.privacy_opens_in_browser),
             modifier = Modifier.size(20.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -102,7 +104,7 @@ fun PrivacyPolicyLink(modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         Text(
-            "Privacy policy",
+            stringResource(R.string.privacy_policy),
             style = MaterialTheme.typography.bodySmall,
         )
     }

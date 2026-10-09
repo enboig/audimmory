@@ -27,11 +27,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.audimmory.mobile.core.Plural
+import org.audimmory.mobile.R
 import org.audimmory.mobile.ui.components.AudimmoryRefreshIndicator
 import org.audimmory.mobile.ui.components.ConnectionStatusIcon
 import org.audimmory.mobile.ui.components.MosaicTile
@@ -52,14 +54,14 @@ fun CollectionsScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (tiles.isEmpty()) "Shelves" else "Shelves · ${tiles.size}")
+                        Text(if (tiles.isEmpty()) stringResource(R.string.nav_shelves) else stringResource(R.string.title_with_count, stringResource(R.string.nav_shelves), tiles.size))
                         Spacer(Modifier.width(8.dp))
                         ConnectionStatusIcon()
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.action_menu))
                     }
                 },
             )
@@ -82,7 +84,7 @@ fun CollectionsScreen(
             if (tiles.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        if (state.refreshing) "Loading collections…" else "No collections yet.",
+                        if (state.refreshing) stringResource(R.string.shelves_loading) else stringResource(R.string.shelves_empty),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                     )
@@ -98,7 +100,7 @@ fun CollectionsScreen(
                     items(tiles, key = { it.id }) { tile ->
                         MosaicTile(
                             title = tile.name,
-                            subtitle = Plural.count(tile.bookCount, "book"),
+                            subtitle = pluralStringResource(R.plurals.book_count, tile.bookCount, tile.bookCount),
                             coverUrls = tile.coverUrls,
                             onClick = { onOpenCollection(tile.id) },
                         )

@@ -97,6 +97,14 @@ workflow, builds and verifies the signed APK, then pushes and publishes the
 GitHub Release. `--skip-checks` skips ktlint, Lint and the unit tests. Audimmory is not
 yet published on F-Droid; see [`fdroid/README.md`](fdroid/README.md).
 
+## Languages
+
+The app is available in English, Catalan and Spanish, and follows the phone's
+language. On Android 13 and later you can pick a different language just for
+Audimmory in **Settings → Language** (or Android's per-app language settings).
+Translations live in `app/src/main/res/values*/strings.xml`; see AGENTS.md
+for the style rules.
+
 ## Connecting To A Server
 
 **Debug builds** default to `http://10.0.2.2:6060`, Android Emulator's alias for

@@ -24,15 +24,15 @@ object DownloadNotifications {
 
     fun ensureChannel(context: Context) {
         val manager = context.getSystemService<NotificationManager>() ?: return
-        if (manager.getNotificationChannel(CHANNEL_ID) == null) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Downloads",
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply { description = "Audiobook download progress" },
-            )
-        }
+        // Re-creating an existing channel only updates its name and
+        // description, which keeps them in the current language.
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                context.getString(R.string.download_channel_name),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply { description = context.getString(R.string.download_channel_description) },
+        )
     }
 
     fun progress(
@@ -44,7 +44,7 @@ object DownloadNotifications {
         val builder =
             NotificationCompat
                 .Builder(context, CHANNEL_ID)
-                .setContentTitle("Downloading")
+                .setContentTitle(context.getString(R.string.download_notification_title))
                 .setContentText(title)
                 .setSmallIcon(R.drawable.ic_stat_download)
                 .setOngoing(true)
@@ -52,7 +52,7 @@ object DownloadNotifications {
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
 
         if (percent != null && percent >= 0) {
-            builder.setProgress(100, percent, false).setContentText("$title  •  $percent%")
+            builder.setProgress(100, percent, false).setContentText(context.getString(R.string.download_notification_progress, title, percent))
         } else {
             builder.setProgress(0, 0, true)
         }
@@ -63,13 +63,13 @@ object DownloadNotifications {
         context: Context,
         bookId: String,
         title: String,
-    ) = notifyTerminal(context, bookId, "Download complete", title)
+    ) = notifyTerminal(context, bookId, context.getString(R.string.download_complete), title)
 
     fun failed(
         context: Context,
         bookId: String,
         title: String,
-    ) = notifyTerminal(context, bookId, "Download failed", title)
+    ) = notifyTerminal(context, bookId, context.getString(R.string.download_failed), title)
 
     /**
      * Dismisses every download notification this app has posted.

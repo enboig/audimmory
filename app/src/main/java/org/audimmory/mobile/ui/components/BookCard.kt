@@ -22,9 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import org.audimmory.mobile.R
 
 /**
  * A square-cover book tile used on the home shelves: cover with an optional
@@ -89,7 +91,7 @@ fun BookCard(
                 ) {
                     Icon(
                         Icons.Default.Check,
-                        contentDescription = "Finished",
+                        contentDescription = stringResource(R.string.progress_finished),
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(14.dp),
                     )

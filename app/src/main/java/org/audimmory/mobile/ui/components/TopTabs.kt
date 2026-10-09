@@ -9,6 +9,8 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import org.audimmory.mobile.R
 
 /** The two top-level destinations, shown as a top tab row on Home and Library. */
 enum class TopTab { HOME, LIBRARY }
@@ -28,13 +30,13 @@ fun TopTabs(
         Tab(
             selected = selected == TopTab.HOME,
             onClick = { onSelect(TopTab.HOME) },
-            text = { Text("Home") },
+            text = { Text(stringResource(R.string.nav_home)) },
             icon = { Icon(Icons.Default.Home, contentDescription = null) },
         )
         Tab(
             selected = selected == TopTab.LIBRARY,
             onClick = { onSelect(TopTab.LIBRARY) },
-            text = { Text("Library") },
+            text = { Text(stringResource(R.string.nav_library)) },
             icon = { Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = null) },
         )
     }

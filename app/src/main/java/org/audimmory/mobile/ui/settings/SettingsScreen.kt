@@ -1,5 +1,10 @@
 package org.audimmory.mobile.ui.settings
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,9 +48,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.audimmory.mobile.R
 import org.audimmory.mobile.data.local.ThemeMode
 import org.audimmory.mobile.ui.components.ConnectionStatusIcon
 import org.audimmory.mobile.ui.components.PrivacyPolicyRow
@@ -67,14 +76,14 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Settings")
+                        Text(stringResource(R.string.nav_settings))
                         Spacer(Modifier.width(8.dp))
                         ConnectionStatusIcon()
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
             )
@@ -89,7 +98,7 @@ fun SettingsScreen(
                     .padding(bottom = 24.dp),
         ) {
             Text(
-                "Appearance",
+                stringResource(R.string.settings_appearance),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
@@ -101,110 +110,112 @@ fun SettingsScreen(
             )
             HorizontalDivider()
 
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                LanguageRow()
+                HorizontalDivider()
+            }
+
             Text(
-                "Player",
+                stringResource(R.string.settings_player),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
             )
 
             SwitchRow(
-                label = "Use chapter track in mini-player",
-                description = "Show mini-player progress within the current chapter.",
+                label = stringResource(R.string.settings_mini_chapter_track),
+                description = stringResource(R.string.settings_mini_chapter_track_description),
                 checked = settings.useChapterTrack,
                 onChange = viewModel::setUseChapterTrack,
             )
             HorizontalDivider()
 
             SwitchRow(
-                label = "Show total track on Now Playing",
-                description = "Show the whole-book progress bar on the full player.",
+                label = stringResource(R.string.settings_total_track),
+                description = stringResource(R.string.settings_total_track_description),
                 checked = settings.showTotalTrackOnNowPlaying,
                 onChange = viewModel::setShowTotalTrackOnNowPlaying,
             )
             HorizontalDivider()
 
             SwitchRow(
-                label = "Show chapter track on Now Playing",
-                description = "Show the current-chapter progress bar on the full player.",
+                label = stringResource(R.string.settings_chapter_track),
+                description = stringResource(R.string.settings_chapter_track_description),
                 checked = settings.showChapterTrackOnNowPlaying,
                 onChange = viewModel::setShowChapterTrackOnNowPlaying,
             )
             HorizontalDivider()
 
             JumpRow(
-                label = "Jump forward amount",
+                label = stringResource(R.string.settings_jump_forward),
                 seconds = settings.jumpForwardSeconds,
                 onSelect = viewModel::setJumpForward,
             )
             HorizontalDivider()
 
             JumpRow(
-                label = "Jump backward amount",
+                label = stringResource(R.string.settings_jump_backward),
                 seconds = settings.jumpBackwardSeconds,
                 onSelect = viewModel::setJumpBackward,
             )
             HorizontalDivider()
 
             SwitchRow(
-                label = "Allow position seeking on media notification controls",
+                label = stringResource(R.string.settings_notification_seeking),
                 checked = settings.allowSeekFromNotification,
                 onChange = viewModel::setAllowSeekFromNotification,
             )
             HorizontalDivider()
 
             Text(
-                "Chapters",
+                stringResource(R.string.settings_chapters),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
             )
 
             SwitchRow(
-                label = "Show chapter start time",
-                description = "Show each chapter's start timestamp on book details.",
+                label = stringResource(R.string.settings_chapter_start),
+                description = stringResource(R.string.settings_chapter_start_description),
                 checked = settings.showChapterStartOnBookDetail,
                 onChange = viewModel::setShowChapterStartOnBookDetail,
             )
             HorizontalDivider()
 
             SwitchRow(
-                label = "Show chapter duration",
-                description = "Show each chapter's duration on book details.",
+                label = stringResource(R.string.settings_chapter_duration),
+                description = stringResource(R.string.settings_chapter_duration_description),
                 checked = settings.showChapterDurationOnBookDetail,
                 onChange = viewModel::setShowChapterDurationOnBookDetail,
             )
             HorizontalDivider()
 
             Text(
-                "Bookmarks",
+                stringResource(R.string.settings_bookmarks),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
             )
 
             JumpRow(
-                label = "Bookmark context time",
+                label = stringResource(R.string.settings_bookmark_context),
                 seconds = settings.bookmarkContextSeconds,
-                description = "Preview playback starts this many seconds before the bookmark.",
+                description = stringResource(R.string.settings_bookmark_context_description),
                 options = BOOKMARK_CONTEXT_OPTIONS,
                 onSelect = viewModel::setBookmarkContext,
             )
             HorizontalDivider()
 
             SwitchRow(
-                label = "Bookmark with the next-track button",
+                label = stringResource(R.string.settings_headset_bookmark),
                 checked = settings.bookmarkOnMediaNextButton,
-                description =
-                    "Bluetooth headsets, car controls and wired remotes create a bookmark at the " +
-                        "current position instead of jumping forward. The notification's forward " +
-                        "button is unaffected.",
+                description = stringResource(R.string.settings_headset_bookmark_description),
                 onChange = viewModel::setBookmarkOnMediaNextButton,
             )
             HorizontalDivider()
 
             Text(
-                "About",
+                stringResource(R.string.settings_about),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
@@ -213,6 +224,33 @@ fun SettingsScreen(
             PrivacyPolicyRow()
             HorizontalDivider()
         }
+    }
+}
+
+/**
+ * Opens Android's per-app language screen (Android 13+). The app has no
+ * language setting of its own: it follows the system, or this per-app choice.
+ */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@Composable
+private fun LanguageRow() {
+    val context = LocalContext.current
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    context.startActivity(
+                        Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+                    )
+                }.padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(R.string.settings_language_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -228,9 +266,9 @@ private fun ThemeModeRow(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Theme", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.bodyLarge)
         Text(
-            "Choose how Audimmory should look on this device.",
+            stringResource(R.string.settings_theme_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -246,21 +284,21 @@ private fun ThemeModeRow(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             ThemeModeOption(
-                label = "System",
+                label = stringResource(R.string.settings_theme_system),
                 icon = Icons.Default.BrightnessAuto,
                 selected = selected == ThemeMode.SYSTEM,
                 onClick = { onSelect(ThemeMode.SYSTEM) },
                 modifier = Modifier.weight(1f),
             )
             ThemeModeOption(
-                label = "Dark",
+                label = stringResource(R.string.settings_theme_dark),
                 icon = Icons.Default.DarkMode,
                 selected = selected == ThemeMode.DARK,
                 onClick = { onSelect(ThemeMode.DARK) },
                 modifier = Modifier.weight(1f),
             )
             ThemeModeOption(
-                label = "Light",
+                label = stringResource(R.string.settings_theme_light),
                 icon = Icons.Default.LightMode,
                 selected = selected == ThemeMode.LIGHT,
                 onClick = { onSelect(ThemeMode.LIGHT) },
@@ -363,12 +401,12 @@ private fun JumpRow(
         }
         Box {
             TextButton(onClick = { expanded = true }) {
-                Text("$seconds seconds")
+                Text(pluralStringResource(R.plurals.seconds_count, seconds, seconds))
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 options.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text("$option seconds") },
+                        text = { Text(pluralStringResource(R.plurals.seconds_count, option, option)) },
                         onClick = {
                             onSelect(option)
                             expanded = false

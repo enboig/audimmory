@@ -2,8 +2,10 @@ package org.audimmory.mobile.ui.collections
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.audimmory.mobile.R
 import org.audimmory.mobile.ui.components.BookGridDetail
 import org.audimmory.mobile.ui.components.DetailBook
 
@@ -17,8 +19,8 @@ fun CollectionDetailScreen(
     val books by viewModel.books.collectAsStateWithLifecycle()
 
     BookGridDetail(
-        title = collection?.name ?: "Shelf",
-        emptyText = "This collection is empty.",
+        title = collection?.name ?: stringResource(R.string.shelf_fallback_title),
+        emptyText = stringResource(R.string.shelf_empty),
         books = books.map { DetailBook(it.id, it.title, it.author, it.coverUrl) },
         onBack = onBack,
         onOpenBook = onOpenBook,

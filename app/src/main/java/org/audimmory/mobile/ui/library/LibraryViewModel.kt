@@ -250,7 +250,7 @@ class LibraryViewModel
                 refreshState.update {
                     it.copy(
                         refreshing = false,
-                        error = failure?.let { error -> error.message ?: "Sync failed" },
+                        error = failure?.let { error -> error.message ?: error.javaClass.simpleName },
                     )
                 }
             }

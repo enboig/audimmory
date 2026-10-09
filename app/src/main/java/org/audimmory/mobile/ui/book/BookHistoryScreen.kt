@@ -32,11 +32,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.audimmory.mobile.R
 import org.audimmory.mobile.core.DateTimeFormat
 import org.audimmory.mobile.core.TimeFormat
 import org.audimmory.mobile.data.local.PlaybackEventEntity
@@ -62,14 +64,14 @@ fun BookHistoryScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("History")
+                        Text(stringResource(R.string.history_title))
                         Spacer(Modifier.width(8.dp))
                         ConnectionStatusIcon()
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
             )
@@ -87,7 +89,7 @@ fun BookHistoryScreen(
         ) {
             item {
                 Text(
-                    "History for ${book?.title ?: "Book"}",
+                    stringResource(R.string.history_for, book?.title ?: stringResource(R.string.book_fallback_title)),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp),
@@ -97,7 +99,7 @@ fun BookHistoryScreen(
             if (events.isEmpty()) {
                 item {
                     Text(
-                        "No listening history yet.",
+                        stringResource(R.string.history_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -157,7 +159,7 @@ private fun HistoryEventRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                event.event,
+                event.label(),
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -166,7 +168,7 @@ private fun HistoryEventRow(
                 Spacer(Modifier.width(6.dp))
                 Icon(
                     Icons.Default.CloudDone,
-                    contentDescription = "Synced",
+                    contentDescription = stringResource(R.string.history_synced),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(16.dp),
                 )
@@ -180,6 +182,18 @@ private fun HistoryEventRow(
         )
     }
 }
+
+/** Events are stored with English names ("Play", "Pause"…); show them localized. */
+@Composable
+private fun PlaybackEventEntity.label(): String =
+    when (event) {
+        "Play" -> stringResource(R.string.history_event_play)
+        "Pause" -> stringResource(R.string.history_event_pause)
+        "Seek" -> stringResource(R.string.history_event_seek)
+        "Save" -> stringResource(R.string.history_event_save)
+        "Stop" -> stringResource(R.string.history_event_stop)
+        else -> event
+    }
 
 private fun PlaybackEventEntity.icon(): ImageVector =
     when (event) {
@@ -197,11 +211,12 @@ private fun PlaybackEventEntity.instant(): Instant =
 
 private fun PlaybackEventEntity.localDate(): LocalDate = instant().atZone(ZoneId.systemDefault()).toLocalDate()
 
+@Composable
 private fun LocalDate.dayLabel(dateFormat: String): String {
     val today = LocalDate.now()
     return when (this) {
-        today -> "Today"
-        today.minusDays(1) -> "Yesterday"
+        today -> stringResource(R.string.history_today)
+        today.minusDays(1) -> stringResource(R.string.history_yesterday)
         else -> DateTimeFormat.formatDate(toString(), dateFormat).orEmpty()
     }
 }

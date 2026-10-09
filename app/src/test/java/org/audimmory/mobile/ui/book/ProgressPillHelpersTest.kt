@@ -38,11 +38,11 @@ class ProgressPillHelpersTest {
 
     @Test
     fun remaining_is_null_when_finished() {
-        assertEquals(null, remainingLabel(progress(finished = true), 1000.0, false, 0L))
+        assertEquals(null, remainingDuration(progress(finished = true), 1000.0, false, 0L))
     }
 
     @Test
     fun remaining_computes_from_saved_position() {
-        assertEquals("12m remaining", remainingLabel(progress(current = 250.0), 1000.0, false, 0L))
+        assertEquals("12m", remainingDuration(progress(current = 250.0), 1000.0, false, 0L))
     }
 }

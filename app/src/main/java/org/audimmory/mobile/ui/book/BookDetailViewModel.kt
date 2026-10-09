@@ -177,7 +177,7 @@ class BookDetailViewModel
                 _state.update {
                     it.copy(
                         loading = false,
-                        error = result.exceptionOrNull()?.let { e -> e.message ?: "Failed to load" },
+                        error = result.exceptionOrNull()?.let { e -> e.message ?: e.javaClass.simpleName },
                     )
                 }
             }
@@ -185,7 +185,7 @@ class BookDetailViewModel
 
         fun startDownload() {
             if (!canDownload.value) return
-            val title = book.value?.title ?: "Audiobook"
+            val title = book.value?.title.orEmpty()
             downloadRepository.enqueue(bookId, title)
         }
 

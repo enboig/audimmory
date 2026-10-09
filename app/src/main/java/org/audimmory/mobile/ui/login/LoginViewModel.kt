@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.audimmory.mobile.BuildConfig
 import org.audimmory.mobile.data.repository.AuthRepository
+import retrofit2.HttpException
+import java.io.IOException
 import javax.inject.Inject
 
 data class LoginUiState(
@@ -18,8 +20,21 @@ data class LoginUiState(
     val username: String = "",
     val password: String = "",
     val loading: Boolean = false,
-    val error: String? = null,
+    val error: LoginError? = null,
 )
+
+/** Why sign-in failed; the screen turns it into a localized message. */
+sealed interface LoginError {
+    data object MissingFields : LoginError
+
+    data object Credentials : LoginError
+
+    data object Unreachable : LoginError
+
+    data class Other(
+        val detail: String,
+    ) : LoginError
+}
 
 @HiltViewModel
 class LoginViewModel
@@ -45,7 +60,7 @@ class LoginViewModel
         fun login(onSuccess: () -> Unit) {
             val s = _state.value
             if (s.serverUrl.isBlank() || s.username.isBlank() || s.password.isBlank()) {
-                _state.update { it.copy(error = "All fields are required") }
+                _state.update { it.copy(error = LoginError.MissingFields) }
                 return
             }
             _state.update { it.copy(loading = true, error = null) }
@@ -58,10 +73,17 @@ class LoginViewModel
                     },
                     onFailure = { e ->
                         _state.update {
-                            it.copy(loading = false, error = e.message ?: "Login failed")
+                            it.copy(loading = false, error = e.toLoginError())
                         }
                     },
                 )
             }
         }
+    }
+
+private fun Throwable.toLoginError(): LoginError =
+    when {
+        this is HttpException && (code() == 401 || code() == 403) -> LoginError.Credentials
+        this is IOException -> LoginError.Unreachable
+        else -> LoginError.Other(message ?: javaClass.simpleName)
     }

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import org.audimmory.mobile.core.Chapters
+import org.audimmory.mobile.data.local.ChapterEntity
 import org.audimmory.mobile.data.repository.AuthRepository
 import org.audimmory.mobile.data.repository.LibraryRepository
 import org.audimmory.mobile.data.repository.coverModel
@@ -67,7 +68,7 @@ class MiniPlayerViewModel
          * Current chapter title, recomputed as the playhead moves. Exposed as a
          * StateFlow so the mini-player recomposes when the chapter changes.
          */
-        val currentChapterTitle: StateFlow<String?> =
+        val currentChapter: StateFlow<ChapterEntity?> =
             combine(chapters, playerConnection.state.map { it.positionMs }.distinctUntilChanged()) { chs, positionMs ->
                 if (chs.isEmpty()) return@combine null
                 val spans =
@@ -78,8 +79,7 @@ class MiniPlayerViewModel
                         }
                     }
                 val idx = Chapters.currentIndex(spans, positionMs / 1000.0) ?: return@combine null
-                val ch = chs[idx]
-                ch.title ?: "Chapter ${ch.index + 1}"
+                chs[idx]
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         /**

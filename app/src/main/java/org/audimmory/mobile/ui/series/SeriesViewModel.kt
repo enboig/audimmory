@@ -68,7 +68,7 @@ class SeriesViewModel
                 _state.update {
                     it.copy(
                         refreshing = false,
-                        error = result.exceptionOrNull()?.let { e -> e.message ?: "Failed to load" },
+                        error = result.exceptionOrNull()?.let { e -> e.message ?: e.javaClass.simpleName },
                     )
                 }
             }

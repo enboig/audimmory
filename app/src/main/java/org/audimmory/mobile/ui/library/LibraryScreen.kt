@@ -75,6 +75,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -87,7 +89,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import org.audimmory.mobile.R
-import org.audimmory.mobile.core.Plural
 import org.audimmory.mobile.ui.components.AudimmoryRefreshIndicator
 import org.audimmory.mobile.ui.components.BookCard
 import org.audimmory.mobile.ui.components.ConnectionStatusIcon
@@ -143,7 +144,7 @@ fun LibraryScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onOpenDrawer) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.action_menu))
                         }
                     },
                 )
@@ -197,16 +198,16 @@ fun LibraryScreen(
                         Box(Modifier.weight(1f)) {
                             when {
                                 state.totalBookCount == 0 && state.refreshing ->
-                                    CenterText("Loading your library…")
+                                    CenterText(stringResource(R.string.library_loading))
 
                                 state.totalBookCount == 0 && state.error != null ->
-                                    CenterText("Couldn't reach the server.\n${state.error}")
+                                    CenterText(stringResource(R.string.error_server_unreachable, state.error.orEmpty()))
 
                                 state.totalBookCount == 0 ->
-                                    CenterText("No books yet.")
+                                    CenterText(stringResource(R.string.library_empty))
 
                                 state.books.isEmpty() ->
-                                    CenterText("No books match the current search and filters.")
+                                    CenterText(stringResource(R.string.library_no_matches))
 
                                 else ->
                                     LazyVerticalGrid(
@@ -235,12 +236,13 @@ fun LibraryScreen(
             }
 
             if (searchExpanded && LibrarySearchEngine.ready(state.searchQuery)) {
+                val dismissSearchLabel = stringResource(R.string.search_dismiss)
                 Box(
                     Modifier
                         .fillMaxSize()
                         .padding(top = 72.dp)
                         .zIndex(1f)
-                        .semantics { contentDescription = "Dismiss search results" }
+                        .semantics { contentDescription = dismissSearchLabel }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -314,12 +316,12 @@ private fun LibrarySearchField(
                         false
                     }
                 },
-        placeholder = { Text("Search books and library metadata") },
+        placeholder = { Text(stringResource(R.string.search_placeholder)) },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = onClear) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear search")
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.search_clear))
                 }
             }
         },
@@ -356,7 +358,7 @@ private fun LibrarySearchResults(
         if (empty) {
             Box(Modifier.fillMaxWidth().padding(36.dp), contentAlignment = Alignment.Center) {
                 Text(
-                    "No matching books or metadata",
+                    stringResource(R.string.search_no_results),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
@@ -364,7 +366,7 @@ private fun LibrarySearchResults(
         } else {
             LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
                 if (state.searchBooks.isNotEmpty()) {
-                    item { SearchGroupHeader("Books", state.searchBookCount) }
+                    item { SearchGroupHeader(stringResource(R.string.search_group_books), state.searchBookCount) }
                     items(state.searchBooks, key = { "book-${it.id}" }) { book ->
                         Row(
                             modifier =
@@ -395,7 +397,7 @@ private fun LibrarySearchResults(
                                 Text(book.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                                 book.author?.takeIf { it.isNotBlank() }?.let { author ->
                                     Text(
-                                        "by $author",
+                                        stringResource(R.string.by_author, author),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
@@ -409,7 +411,7 @@ private fun LibrarySearchResults(
 
                 state.searchFacetGroups.forEach { group ->
                     item(key = "heading-${group.category}") {
-                        SearchGroupHeader(group.label, group.total)
+                        SearchGroupHeader(group.category.displayName(), group.total)
                     }
                     items(group.items, key = { "${group.category}-${it.id}" }) { option ->
                         Row(
@@ -439,7 +441,7 @@ private fun LibrarySearchResults(
                             Column(Modifier.weight(1f)) {
                                 Text(option.name, style = MaterialTheme.typography.bodyMedium)
                                 Text(
-                                    Plural.count(option.bookCount, "book"),
+                                    pluralStringResource(R.plurals.book_count, option.bookCount, option.bookCount),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -489,14 +491,14 @@ private fun FilterToolbar(
             OutlinedButton(onClick = onOpenFilters) {
                 Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (state.filters.count == 0) "Filters" else "Filters · ${state.filters.count}")
+                Text(if (state.filters.count == 0) stringResource(R.string.filters_button) else stringResource(R.string.title_with_count, stringResource(R.string.filters_button), state.filters.count))
             }
             Spacer(Modifier.weight(1f))
             OutlinedButton(onClick = onOpenSort, modifier = Modifier.widthIn(max = 190.dp)) {
                 Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    state.sortState.sort.label,
+                    state.sortState.sort.displayName(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -530,12 +532,12 @@ private fun FilterToolbar(
                                 selectedTrailingIconColor = MaterialTheme.colorScheme.primary,
                             ),
                         label = {
-                            Text("${activeCategory.label} · ${state.filters.selected(activeCategory).size}")
+                            Text(stringResource(R.string.title_with_count, activeCategory.displayName(), state.filters.selected(activeCategory).size))
                         },
                         trailingIcon = {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Clear ${activeCategory.label}",
+                                contentDescription = stringResource(R.string.filter_clear_category, activeCategory.displayName()),
                                 modifier =
                                     Modifier
                                         .size(16.dp)
@@ -559,9 +561,9 @@ private fun LibrarySortSheet(
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text("Sort library", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.sort_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(
-                "Choose a field and direction",
+                stringResource(R.string.sort_subtitle),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -582,9 +584,9 @@ private fun LibrarySortSheet(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         if (state.direction == LibrarySortDirection.ASCENDING) {
-                            "Ascending"
+                            stringResource(R.string.sort_ascending)
                         } else {
-                            "Descending"
+                            stringResource(R.string.sort_descending)
                         },
                     )
                 }
@@ -620,7 +622,7 @@ private fun LibrarySortSheet(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            sort.label,
+                            sort.displayName(),
                             modifier = Modifier.weight(1f),
                             color =
                                 if (selected) {
@@ -633,7 +635,7 @@ private fun LibrarySortSheet(
                         if (selected) {
                             Icon(
                                 Icons.Default.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.sort_selected),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         }
@@ -665,15 +667,15 @@ private fun LibraryFilterSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Filter library", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.filter_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
-                        "Choose multiple values to narrow your books",
+                        stringResource(R.string.filter_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (state.filters.count > 0) {
-                    TextButton(onClick = onClearAll) { Text("Clear all") }
+                    TextButton(onClick = onClearAll) { Text(stringResource(R.string.action_clear_all)) }
                 }
             }
 
@@ -694,7 +696,7 @@ private fun LibraryFilterSheet(
                             ),
                         label = {
                             val count = state.filters.selected(item).size
-                            Text(if (count == 0) item.label else "${item.label} · $count")
+                            Text(if (count == 0) item.displayName() else stringResource(R.string.title_with_count, item.displayName(), count))
                         },
                     )
                 }
@@ -706,9 +708,9 @@ private fun LibraryFilterSheet(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(category.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Text(category.displayName(), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 if (state.filters.selected(category).isNotEmpty()) {
-                    TextButton(onClick = { onClearCategory(category) }) { Text("Clear") }
+                    TextButton(onClick = { onClearCategory(category) }) { Text(stringResource(R.string.action_clear)) }
                 }
             }
 
@@ -716,18 +718,21 @@ private fun LibraryFilterSheet(
                 value = optionQuery,
                 onValueChange = { optionQuery = it },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                placeholder = { Text("Search ${category.label.lowercase()}") },
+                placeholder = { Text(stringResource(R.string.filter_search_placeholder, category.displayName().lowercase())) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
             )
 
+            val progressNames = progressOptionNames()
+
+            fun displayName(option: LibraryFilterOption): String = if (category == LibraryFilterCategory.PROGRESS) progressNames[option.id] ?: option.name else option.name
             val options =
                 state.optionsFor(category).filter {
-                    optionQuery.isBlank() || it.name.contains(optionQuery.trim(), ignoreCase = true)
+                    optionQuery.isBlank() || displayName(it).contains(optionQuery.trim(), ignoreCase = true)
                 }
             if (options.isEmpty()) {
                 Text(
-                    "No options available",
+                    stringResource(R.string.filter_no_options),
                     modifier = Modifier.fillMaxWidth().padding(32.dp),
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -754,7 +759,7 @@ private fun LibraryFilterSheet(
                                 checked = selected,
                                 onCheckedChange = { onToggle(category, option.id) },
                             )
-                            Text(option.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(displayName(option), style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }
@@ -763,12 +768,13 @@ private fun LibraryFilterSheet(
     }
 }
 
+@Composable
 private fun libraryTitle(state: LibraryUiState): String =
     when {
-        state.totalBookCount == 0 -> "Library"
+        state.totalBookCount == 0 -> stringResource(R.string.nav_library)
         state.filters.count > 0 || state.searchQuery.isNotBlank() ->
-            "Library · ${state.books.size}/${state.totalBookCount}"
-        else -> "Library · ${Plural.count(state.totalBookCount, "book")}"
+            stringResource(R.string.library_title_filtered, state.books.size, state.totalBookCount)
+        else -> pluralStringResource(R.plurals.library_title_books, state.totalBookCount, state.totalBookCount)
     }
 
 @Composable

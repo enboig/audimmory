@@ -2,6 +2,6 @@
   "database": "dolt",
   "backend": "dolt",
   "dolt_mode": "embedded",
-  "dolt_database": "pm",
-  "project_id": "8f600e77-a6b5-46da-a299-91267d7557af"
+  "dolt_database": "aud",
+  "project_id": "f8fc3622-a116-4f63-9931-bb2b19ae4fed"
 }

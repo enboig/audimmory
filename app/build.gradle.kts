@@ -53,8 +53,8 @@ val appVersionCode = versionProp("VERSION_CODE").toInt()
 // `assembleRelease` on machines with no key, and F-Droid signs the result with
 // its own key. Making signing unconditional would break them.
 //
-// Kept after Google Play was abandoned (closed beads epic pm-a6l) because it is
-// verified, inert without a key, and cheap to reinstate.
+// Kept after Google Play was abandoned (Pageless's closed beads epic pm-a6l)
+// because it is verified, inert without a key, and cheap to reinstate.
 val keystoreProperties =
     Properties().apply {
         val file = rootProject.file("keystore.properties")
@@ -112,7 +112,7 @@ android {
         // a LAN server — which is the normal Grimmory deployment — is then
         // blocked until the user grants ACCESS_LOCAL_NETWORK at runtime.
         // Denying it looks like total app failure, so the permission flow has
-        // to ship in the same change. Implement pm-a6l.20 first.
+        // to ship in the same change. Implement aud-e87 first.
         //
         // Do not pre-declare ACCESS_LOCAL_NETWORK to get ahead of it. Google is
         // explicit that apps targeting 36 or lower must not add it to the

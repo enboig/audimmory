@@ -94,7 +94,7 @@ docs and the endpoint table; this file captures conventions and gotchas.
   runtime `ACCESS_LOCAL_NETWORK` permission, and the usual Grimmory server is a
   LAN address. A denial blocks login, library, covers, downloads, streaming and
   sync at once, which reads as the app being broken. So the permission flow must
-  land in the same change as the bump — see `pm-a6l.20`. Until then, do **not**
+  land in the same change as the bump — see `aud-e87`. Until then, do **not**
   declare or request `ACCESS_LOCAL_NETWORK`: Google's guidance is that apps
   targeting 36 or lower must not, because `INTERNET` already grants local access
   implicitly.
@@ -467,19 +467,24 @@ on the JVM.
 - Keep the subject imperative and without a trailing period. Wrap the body at
   ~80 columns and use it to explain **why**, plus anything the diff cannot show
   (constraints, rejected alternatives, verification performed).
-- Reference beads issues in a trailer: `Closes pm-a6l.17` when the commit
-  finishes that issue, `Refs pm-a6l.3` for related context.
+- Reference beads issues in a trailer: `Closes aud-vmv` when the commit
+  finishes that issue, `Refs aud-e87` for related context.
 - The release workflow's automated commit uses 🔖 and **must keep its
   `[skip ci]` marker** (`.github/workflows/release.yml`); that marker is what
   stops the release commit from re-triggering CI.
 - Historical exception: `🌅 Initial commit` (upstream Pageless) predates this convention (Gitmoji's
   equivalent is 🎉 `:tada:`). Leave it alone, but don't copy it.
 
-Beads Dolt auto-push is enabled with a one-minute debounce. Run `bd dolt pull`
-at the start of a work session; mutating `bd` commands may sync automatically.
-This does not authorize Git commits or Git pushes.
+Audimmory's issues use the `aud-` prefix and sync through this repository's
+`refs/dolt/data` (`sync.remote` in `.beads/config.yaml`). The `pm-` issues
+inherited from Pageless stay in upstream's repository and are not imported;
+still-relevant ones were re-filed as `aud-` issues. Auto-push is off: run
+`bd dolt pull` at the start of a work session and `bd dolt push` after changing
+issues. Neither authorizes Git commits or Git pushes. `bd init`/`bd setup` also
+install Codex/Cursor/Claude integrations and git hooks (`core.hooksPath`); this
+repository deliberately keeps none of them.
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
+<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:46cd31e7 -->
 ## Beads Issue Tracker
 
 This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
@@ -499,7 +504,7 @@ bd close <id>         # Complete work
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
+**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/core-concepts/sync-concepts.md for details and anti-patterns.
 
 ## Agent Context Profiles
 

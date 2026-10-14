@@ -1,0 +1,1 @@
+Audimmory now talks to Grimmory through the same API as Grimmory's web app, instead of the app endpoints Grimmory has deprecated. Library, home shelves, shelves, magic shelves, book details and progress sync should work as before; please report anything that looks different.

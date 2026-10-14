@@ -32,31 +32,30 @@ interface GrimmoryApi {
     @GET("api/v1/libraries")
     suspend fun libraries(): List<GrimmoryLibrary>
 
-    @GET("api/v1/app/books")
+    /**
+     * One page of books, filtered by `key:value` facets (e.g.
+     * `file_type:AUDIOBOOK`, `shelf:3`, `shelf:magic:5`). [facetLogic] says how
+     * values of the same facet combine; different facets always AND. [sort]
+     * takes comma-separated keys, `-` for descending.
+     */
+    @GET("api/v1/books/page")
     suspend fun books(
         @Query("page") page: Int,
         @Query("size") size: Int,
-        @Query("fileType") fileType: String = AUDIOBOOK,
+        @Query("facet") facets: List<String>,
+        @Query("facet_logic") facetLogic: String? = null,
         @Query("sort") sort: String? = null,
-        @Query("dir") dir: String? = null,
-        @Query("shelfId") shelfId: Long? = null,
-        @Query("magicShelfId") magicShelfId: Long? = null,
-        @Query("status") status: List<String>? = null,
-    ): GrimmoryPage<GrimmoryBookSummary>
+    ): GrimmoryBrowsePage<GrimmoryBook>
 
-    @GET("api/v1/app/books/{id}")
+    /** A book with the user's progress; also the progress read path. */
+    @GET("api/v1/books/{id}")
     suspend fun book(
         @Path("id") id: Long,
-    ): GrimmoryBookDetail
+        @Query("withDescription") withDescription: Boolean = true,
+    ): GrimmoryBook
 
-    @GET("api/v1/app/books/{id}/progress")
-    suspend fun progress(
-        @Path("id") id: Long,
-    ): GrimmoryProgressResponse
-
-    @PUT("api/v1/app/books/{id}/progress")
+    @POST("api/v1/books/progress")
     suspend fun updateProgress(
-        @Path("id") id: Long,
         @Body body: GrimmoryProgressUpdate,
     )
 
@@ -66,31 +65,12 @@ interface GrimmoryApi {
         @Query("bookType") bookType: String = AUDIOBOOK,
     ): GrimmoryAudiobookInfo
 
-    @GET("api/v1/app/series")
-    suspend fun series(
-        @Query("page") page: Int,
-        @Query("size") size: Int,
-    ): GrimmoryPage<GrimmorySeriesSummary>
-
-    @GET("api/v1/app/series/{name}/books")
-    suspend fun seriesBooks(
-        @Path("name") name: String,
-        @Query("page") page: Int,
-        @Query("size") size: Int,
-    ): GrimmoryPage<GrimmoryBookSummary>
-
-    @GET("api/v1/app/shelves")
+    @GET("api/v1/shelves")
     suspend fun shelves(): List<GrimmoryShelf>
 
-    @GET("api/v1/app/shelves/magic")
+    /** Not under `/v1`: Grimmory serves magic shelves at `/api/magic-shelves`. */
+    @GET("api/magic-shelves")
     suspend fun magicShelves(): List<GrimmoryShelf>
-
-    @GET("api/v1/app/shelves/magic/{id}/books")
-    suspend fun magicShelfBooks(
-        @Path("id") id: Long,
-        @Query("page") page: Int,
-        @Query("size") size: Int,
-    ): GrimmoryPage<GrimmoryBookSummary>
 
     @GET("api/v1/bookmarks/book/{bookId}")
     suspend fun bookmarksForBook(
@@ -121,8 +101,8 @@ interface GrimmoryApi {
     companion object {
         const val AUDIOBOOK = "AUDIOBOOK"
 
-        /** Grimmory caps app page sizes at 50. */
-        const val PAGE_SIZE = 50
+        /** Grimmory's largest page for `/api/v1/books/page`. */
+        const val PAGE_SIZE = 100
     }
 }
 

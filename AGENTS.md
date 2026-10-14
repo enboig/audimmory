@@ -145,9 +145,20 @@ on the JVM.
 - **All server access goes through `data/remote/GrimmoryClient`**, which adapts
   the raw Retrofit `GrimmoryApi` (wire DTOs in `GrimmoryDtos.kt`) into the app
   models in `Dtos.kt`. Repositories never call `GrimmoryApi` directly.
+- **Use the web app's API, never `/api/v1/app/*`.** Grimmory's maintainers
+  call the app endpoints deprecated and unsupported (grimmory#2805; their
+  `/app/libraries` 500s on v3.5.0). Lists come from `GET /api/v1/books/page`
+  with `key:value` facets (`file_type`, `read_status`, `shelf:{id}`,
+  `shelf:magic:{id}`), a `-`-prefixed `sort`, and pages of at most 100;
+  `facet_logic` combines values *within* a facet, different facets always AND.
+  A book and its progress come from `GET /api/v1/books/{id}`; progress is saved
+  with `POST /api/v1/books/progress`. Magic shelves live at
+  `/api/magic-shelves` (no `v1`). The browse API exists since v3.4.0.
 - Grimmory is a general book server: always filter to audiobooks
-  (`fileType=AUDIOBOOK` on lists) and pass `bookType=AUDIOBOOK` on
+  (`facet=file_type:AUDIOBOOK` on lists) and pass `bookType=AUDIOBOOK` on
   `/api/v1/audiobooks/*` so books that also have an ebook resolve the audio file.
+  The main `Book` keeps the file list as `primaryFile` + `alternativeFormats`,
+  and most fields under `metadata`; an ebook's audio is an alternative format.
 - IDs are numeric `Long`s on the server and `String`s in the app. Series,
   narrators, genres (Grimmory "categories") and publishers are plain names; the
   name is the facet ID. Series are derived locally from the book list.
@@ -158,13 +169,10 @@ on the JVM.
   token (2 h) and a refresh token (30 days, rotated on every use, only valid 2
   minutes after issue). `TokenAuthenticator` renews on 401 for every caller of
   the shared `OkHttpClient` (Retrofit, Coil, ExoPlayer, downloads).
-- `GET /api/v1/app/libraries` returns HTTP 500 on Grimmory v3.5.0 (Hibernate
-  lazy-load bug); use `GET /api/v1/libraries`. `GET /api/v1/app/books/continue-listening`
-  is always empty for admins (null library set in an `IN` clause); use
-  `/app/books?status=READING&status=RE_READING&sort=lastReadTime`.
 - Jackson serialises Lombok `boolean isX` fields as `x` (e.g. permissions
-  `admin`, book files `primary`) — use `@SerialName`.
-- App page sizes are capped at 50 by the server; `GrimmoryClient` pages.
+  `admin`, book files `book`) — use `@SerialName`.
+- `audiobookProgress` on a book is built from the user's latest *file*
+  progress only, which is why progress is always saved with `fileProgress`.
 - **Folder-based books** store progress and bookmarks as `trackIndex` +
   `positionMs` *within the track*; single-file books store an absolute
   `positionMs` with no track index. Convert with `TrackTimeline` at the

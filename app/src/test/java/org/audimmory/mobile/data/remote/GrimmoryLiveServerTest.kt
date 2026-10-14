@@ -78,6 +78,9 @@ class GrimmoryLiveServerTest {
             val books = client.books()
             assertTrue(books.isNotEmpty())
             client.home()
+            // Shelves and magic shelves resolve their books through facets.
+            client.collections()
+            client.playlists()
         }
 
     @Test
@@ -94,7 +97,7 @@ class GrimmoryLiveServerTest {
             assertEquals(target, progress!!.currentSeconds, 0.01)
 
             // The server must have stored a per-track position, like the web player does.
-            val raw = rawJson("/api/v1/app/books/${folder.id}/progress")
+            val raw = rawJson("/api/v1/books/${folder.id}")
             assertTrue(raw, raw.contains("\"trackIndex\":1"))
             assertTrue(raw, raw.contains("\"positionMs\":1500"))
         }

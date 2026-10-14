@@ -133,26 +133,29 @@ password.
 
 ## Server Compatibility
 
-Tested against Grimmory v3.5.0. The app uses these Grimmory endpoints:
+Tested against Grimmory v3.5.0; the endpoints below also exist in v3.4.0 and
+v3.4.1. The app uses the same API as Grimmory's own web app:
 
 | Purpose | Endpoint |
 | --- | --- |
 | Sign in / renew / sign out | `POST /api/v1/auth/login`, `/refresh`, `/logout` |
 | Account and permissions | `GET /api/v1/users/me`, `GET /api/v1/version` |
 | Libraries | `GET /api/v1/libraries` |
-| Books (audiobooks only) | `GET /api/v1/app/books?fileType=AUDIOBOOK`, `GET /api/v1/app/books/{id}` |
-| Home shelves | sorted and status-filtered `GET /api/v1/app/books` lists |
+| Books (audiobooks only) | `GET /api/v1/books/page?facet=file_type:AUDIOBOOK`, `GET /api/v1/books/{id}` |
+| Home shelves | `GET /api/v1/books/page` sorted and filtered by `read_status` facets |
 | Audio layout | `GET /api/v1/audiobooks/{id}/info` |
 | Audio | `GET /api/v1/audiobooks/{id}/stream`, `/track/{n}/stream` |
 | Covers | `GET /api/v1/media/book/{id}/audiobook-cover` (or `/cover`) |
-| Progress | `GET`/`PUT /api/v1/app/books/{id}/progress` |
+| Progress | read from `GET /api/v1/books/{id}`, saved with `POST /api/v1/books/progress` |
 | Bookmarks | `/api/v1/bookmarks` |
-| Shelves | `GET /api/v1/app/shelves`, `/app/shelves/magic` |
+| Shelves | `GET /api/v1/shelves`, `GET /api/magic-shelves`; their books via `facet=shelf:{id}` / `shelf:magic:{id}` |
 | Listening sessions | `POST /api/v1/reading-sessions` |
 
-Two endpoints are deliberately not used because of Grimmory v3.5.0 bugs:
-`GET /api/v1/app/libraries` answers HTTP 500, and
-`GET /api/v1/app/books/continue-listening` is always empty for admin accounts.
+Grimmory's `/api/v1/app/*` endpoints are not used: its maintainers consider
+them deprecated
+([grimmory#2805](https://github.com/grimmory-tools/grimmory/issues/2805)), and
+on v3.5.0 `GET /api/v1/app/libraries` answers HTTP 500 and
+`/app/books/continue-listening` is always empty for admin accounts.
 
 ### How Grimmory concepts map onto the app
 

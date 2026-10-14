@@ -56,14 +56,22 @@ data class GrimmoryVersion(
     val current: String? = null,
 )
 
+/**
+ * A page of `GET /api/v1/books/page`. Grimmory also returns a cursor and
+ * HATEOAS links; plain page numbers are enough here.
+ */
 @Serializable
-data class GrimmoryPage<T>(
+data class GrimmoryBrowsePage<T>(
     val content: List<T> = emptyList(),
-    val page: Int = 0,
+    val page: GrimmoryPageInfo = GrimmoryPageInfo(),
+)
+
+@Serializable
+data class GrimmoryPageInfo(
+    val number: Int = 0,
     val size: Int = 0,
     val totalElements: Long = 0,
     val totalPages: Int = 0,
-    val hasNext: Boolean = false,
 )
 
 @Serializable
@@ -72,29 +80,41 @@ data class GrimmoryLibrary(
     val name: String,
 )
 
+/**
+ * A book as Grimmory's main API returns it, for lists and detail alike. The
+ * list endpoint strips a few fields (description, lock flags); progress and
+ * read status are the signed-in user's.
+ */
 @Serializable
-data class GrimmoryBookSummary(
+data class GrimmoryBook(
     val id: Long,
-    val title: String? = null,
-    val authors: List<String>? = null,
-    val readStatus: String? = null,
-    val seriesName: String? = null,
-    val seriesNumber: Float? = null,
     val libraryId: Long? = null,
+    val title: String? = null,
+    val primaryFile: GrimmoryBookFile? = null,
+    val alternativeFormats: List<GrimmoryBookFile>? = null,
+    val metadata: GrimmoryBookMetadata? = null,
     val addedOn: String? = null,
     val lastReadTime: String? = null,
-    val readProgress: Float? = null,
-    val primaryFileId: Long? = null,
-    val primaryFileType: String? = null,
-    val primaryFileName: String? = null,
+    val readStatus: String? = null,
+    val audiobookProgress: GrimmoryAudiobookProgress? = null,
+)
+
+@Serializable
+data class GrimmoryBookMetadata(
+    val title: String? = null,
+    val subtitle: String? = null,
+    val authors: List<String>? = null,
+    val narrator: String? = null,
+    val categories: List<String>? = null,
+    val seriesName: String? = null,
+    val seriesNumber: Float? = null,
+    val publisher: String? = null,
+    val publishedDate: String? = null,
+    val description: String? = null,
+    val isbn13: String? = null,
+    val language: String? = null,
     val coverUpdatedOn: String? = null,
     val audiobookCoverUpdatedOn: String? = null,
-    val publisher: String? = null,
-    val categories: List<String>? = null,
-    val language: String? = null,
-    val narrator: String? = null,
-    val publishedDate: String? = null,
-    val fileSizeKb: Long? = null,
 )
 
 @Serializable
@@ -105,7 +125,6 @@ data class GrimmoryBookFile(
     val bookType: String? = null,
     val fileSizeKb: Long? = null,
     val extension: String? = null,
-    val primary: Boolean = false,
 )
 
 @Serializable
@@ -114,41 +133,6 @@ data class GrimmoryAudiobookProgress(
     val trackIndex: Int? = null,
     val percentage: Float? = null,
     val updatedAt: String? = null,
-)
-
-@Serializable
-data class GrimmoryBookDetail(
-    val id: Long,
-    val title: String? = null,
-    val subtitle: String? = null,
-    val authors: List<String>? = null,
-    val readStatus: String? = null,
-    val seriesName: String? = null,
-    val seriesNumber: Float? = null,
-    val libraryId: Long? = null,
-    val addedOn: String? = null,
-    val lastReadTime: String? = null,
-    val description: String? = null,
-    val categories: List<String>? = null,
-    val publisher: String? = null,
-    val publishedDate: String? = null,
-    val isbn13: String? = null,
-    val language: String? = null,
-    val narrator: String? = null,
-    val readProgress: Float? = null,
-    val primaryFileType: String? = null,
-    val files: List<GrimmoryBookFile>? = null,
-    val coverUpdatedOn: String? = null,
-    val audiobookCoverUpdatedOn: String? = null,
-    val audiobookProgress: GrimmoryAudiobookProgress? = null,
-)
-
-@Serializable
-data class GrimmoryProgressResponse(
-    val readProgress: Float? = null,
-    val readStatus: String? = null,
-    val lastReadTime: String? = null,
-    val audiobookProgress: GrimmoryAudiobookProgress? = null,
 )
 
 @Serializable
@@ -161,6 +145,7 @@ data class GrimmoryFileProgress(
 
 @Serializable
 data class GrimmoryProgressUpdate(
+    val bookId: Long,
     val fileProgress: GrimmoryFileProgress? = null,
     val audiobookProgress: GrimmoryAudiobookProgress? = null,
     val dateFinished: String? = null,
@@ -237,12 +222,6 @@ data class GrimmoryReadingSession(
     val progressDelta: Float?,
     val startLocation: String?,
     val endLocation: String?,
-)
-
-@Serializable
-data class GrimmorySeriesSummary(
-    val seriesName: String,
-    val bookCount: Int = 0,
 )
 
 @Serializable

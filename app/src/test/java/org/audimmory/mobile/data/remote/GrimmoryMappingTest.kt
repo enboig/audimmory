@@ -7,7 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Decodes payloads captured from a Grimmory v3.5.0 server and checks the app mapping. */
+/** Decodes Grimmory v3.5.0 payloads (main API shapes) and checks the app mapping. */
 class GrimmoryMappingTest {
     private val json =
         Json {
@@ -35,18 +35,18 @@ class GrimmoryMappingTest {
 
     private val folderDetail =
         """
-        {"id":2,"title":"Folder MP3","authors":["Bob Writer"],"thumbnailUrl":"/api/books/2/cover",
-         "seriesName":"Tones","seriesNumber":2.0,"libraryId":1,"addedOn":"2026-10-07T17:28:39Z",
-         "categories":["Test"],"language":"en","primaryFileType":"AUDIOBOOK",
-         "files":[{"id":2,"bookId":2,"fileName":"Folder MP3","folderBased":true,"bookType":"AUDIOBOOK","fileSizeKb":705,"book":true,"primary":true}],
-         "audiobookCoverUpdatedOn":"2026-10-07T18:00:00Z"}
+        {"id":2,"libraryId":1,"libraryName":"Audio","addedOn":"2026-10-07T17:28:39Z",
+         "primaryFile":{"id":2,"bookId":2,"fileName":"Folder MP3","folderBased":true,"bookType":"AUDIOBOOK","fileSizeKb":705,"book":true},
+         "metadata":{"bookId":2,"title":"Folder MP3","authors":["Bob Writer"],"seriesName":"Tones","seriesNumber":2.0,
+                     "categories":["Test"],"language":"en","audiobookCoverUpdatedOn":"2026-10-07T18:00:00Z"},
+         "shelves":[],"readStatus":"UNSET"}
         """.trimIndent()
 
     @Test
     fun `folder-based book uses tracks as timeline and chapters`() {
         val info = json.decodeFromString<GrimmoryAudiobookInfo>(folderInfo)
         val layout = info.toLayout()
-        val detail = json.decodeFromString<GrimmoryBookDetail>(folderDetail).toDetail(info, layout)
+        val detail = json.decodeFromString<GrimmoryBook>(folderDetail).toDetail(info, layout)
 
         assertTrue(detail.folderBased)
         assertEquals("2", detail.bookFileId)
@@ -69,7 +69,7 @@ class GrimmoryMappingTest {
         assertEquals(1, layout.tracks.size)
         assertEquals(120_000L, layout.tracks.single().durationMs)
 
-        val detail = GrimmoryBookDetail(id = 1, title = "Chaptered M4B").toDetail(info, layout)
+        val detail = GrimmoryBook(id = 1, metadata = GrimmoryBookMetadata(title = "Chaptered M4B")).toDetail(info, layout)
         assertEquals(listOf("Opening", "Middle"), detail.chapters.map { it.title })
         assertEquals(746_496L, detail.tracks.single().sizeBytes)
         assertFalse(detail.hasCover)
@@ -92,16 +92,45 @@ class GrimmoryMappingTest {
     fun `summary maps names as facet ids and splits narrators`() {
         val summary =
             json
-                .decodeFromString<GrimmoryBookSummary>(
-                    """{"id":3,"title":"Single MP3","authors":["Ann Author"],"narrator":"A, B & C",
-                       "publisher":"Pub","readProgress":42.5,"readStatus":"READING","fileSizeKb":2}""",
+                .decodeFromString<GrimmoryBook>(
+                    """{"id":3,"primaryFile":{"id":3,"fileName":"single.mp3","bookType":"AUDIOBOOK","fileSizeKb":2},
+                       "metadata":{"title":"Single MP3","authors":["Ann Author"],"narrator":"A, B & C","publisher":"Pub"},
+                       "audiobookProgress":{"positionMs":5000,"percentage":42.5},"readStatus":"READING"}""",
                 ).toSummary()
+        assertEquals("Single MP3", summary.title)
         assertEquals(listOf(AuthorDto("Ann Author", "Ann Author")), summary.authors)
         assertEquals(listOf("A", "B", "C"), summary.narrators.map { it.id })
         assertEquals(PublisherDto("Pub", "Pub"), summary.publisher)
         assertEquals(0.425f, summary.progressFraction!!, 0.0001f)
         assertEquals(2048L, summary.size)
         assertNull(summary.updatedAt)
+    }
+
+    @Test
+    fun `audio file is found among the alternative formats of an ebook`() {
+        val book =
+            json.decodeFromString<GrimmoryBook>(
+                """{"id":4,"primaryFile":{"id":10,"fileName":"book.epub","bookType":"EPUB","fileSizeKb":300},
+                   "alternativeFormats":[{"id":11,"fileName":"book.m4b","bookType":"AUDIOBOOK","fileSizeKb":5000}]}""",
+            )
+        assertEquals(5000L * 1024, book.toSummary().size)
+        assertEquals("book.m4b", book.toSummary().title)
+
+        val info = json.decodeFromString<GrimmoryAudiobookInfo>(m4bInfo.replace("\"bookFileId\":1", "\"bookFileId\":11"))
+        val detail = book.toDetail(info, info.toLayout())
+        assertEquals("11", detail.bookFileId)
+        assertEquals("book.m4b", detail.tracks.single().fileName)
+    }
+
+    @Test
+    fun `browse page keeps its paging metadata`() {
+        val page =
+            json.decodeFromString<GrimmoryBrowsePage<GrimmoryBook>>(
+                """{"content":[{"id":1},{"id":2}],"page":{"number":0,"size":2,"totalElements":3,"totalPages":2,"cursor":"x"},
+                   "links":[{"rel":"next","href":"/api/v1/books/page?cursor=y"}]}""",
+            )
+        assertEquals(listOf(1L, 2L), page.content.map { it.id })
+        assertEquals(2, page.page.totalPages)
     }
 
     @Test

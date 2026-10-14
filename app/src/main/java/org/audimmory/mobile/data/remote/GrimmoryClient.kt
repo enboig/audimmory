@@ -62,7 +62,7 @@ class GrimmoryClient
         suspend fun libraries(): List<LibraryDto> = api.libraries().map { LibraryDto(it.id.toString(), it.name) }
 
         /** Every audiobook visible to the user, across all pages. */
-        suspend fun books(): List<BookSummaryDto> = allPages { page -> api.books(page, GrimmoryApi.PAGE_SIZE) }.map { it.toSummary() }
+        suspend fun books(): List<BookSummaryDto> = allPages(AUDIOBOOKS).map { it.toSummary() }
 
         /** Book detail merged with its audio layout (tracks, chapters) and progress. */
         suspend fun book(id: String): BookDetailDto {
@@ -76,10 +76,10 @@ class GrimmoryClient
         suspend fun home(): HomeResponse {
             val continueListening = inProgress(SHELF_SIZE).map { it.toSummary() }
             val recentlyAdded =
-                api.books(0, SHELF_SIZE, sort = "addedOn", dir = "desc").content.map { it.toSummary() }
+                api.books(0, SHELF_SIZE, AUDIOBOOKS, sort = "-addedOn").content.map { it.toSummary() }
             val listenAgain =
                 api
-                    .books(0, SHELF_SIZE, sort = "lastReadTime", dir = "desc", status = listOf("READ"))
+                    .books(0, SHELF_SIZE, AUDIOBOOKS + "read_status:$READ", sort = "-lastReadTime")
                     .content
                     .map { it.toSummary() }
             return HomeResponse(continueListening, recentlyAdded, listenAgain)
@@ -88,8 +88,7 @@ class GrimmoryClient
         /** Grimmory shelves, each with its audiobooks. */
         suspend fun collections(): List<CollectionDto> =
             api.shelves().map { shelf ->
-                val books =
-                    allPages { page -> api.books(page, GrimmoryApi.PAGE_SIZE, shelfId = shelf.id) }
+                val books = allPages(AUDIOBOOKS + "shelf:${shelf.id}")
                 CollectionDto(shelf.id.toString(), shelf.name, books = books.map { it.toSummary() })
             }
 
@@ -98,9 +97,7 @@ class GrimmoryClient
         /** Grimmory magic (rule-based) shelves, each with its audiobooks. */
         suspend fun playlists(): List<PlaylistDto> =
             api.magicShelves().map { shelf ->
-                val books =
-                    allPages { page -> api.magicShelfBooks(shelf.id, page, GrimmoryApi.PAGE_SIZE) }
-                        .filter { it.isAudiobook() }
+                val books = allPages(AUDIOBOOKS + "shelf:magic:${shelf.id}")
                 PlaylistDto(shelf.id.toString(), shelf.name, books = books.map { it.toSummary() })
             }
 
@@ -109,21 +106,21 @@ class GrimmoryClient
         /** IDs of books the server considers in progress, most recent first. */
         suspend fun continueListeningIds(limit: Int): List<String> = inProgress(limit).map { it.id.toString() }
 
-        /**
-         * In-progress audiobooks, most recently played first.
-         *
-         * Not `/app/books/continue-listening`: on Grimmory v3.5.0 it filters by
-         * `library.id IN :libraryIds` while admins get a null library set, so it
-         * is always empty for admin accounts.
-         */
-        private suspend fun inProgress(limit: Int): List<GrimmoryBookSummary> =
+        /** In-progress audiobooks, most recently played first. */
+        private suspend fun inProgress(limit: Int): List<GrimmoryBook> =
             api
-                .books(0, limit.coerceIn(1, GrimmoryApi.PAGE_SIZE), sort = "lastReadTime", dir = "desc", status = IN_PROGRESS)
-                .content
+                .books(
+                    page = 0,
+                    size = limit.coerceIn(1, GrimmoryApi.PAGE_SIZE),
+                    facets = AUDIOBOOKS + IN_PROGRESS.map { "read_status:$it" },
+                    // Either in-progress status; the single file type is unaffected.
+                    facetLogic = "or",
+                    sort = "-lastReadTime",
+                ).content
 
         /** The server's audiobook progress for [bookId], or null when it has none. */
         suspend fun progress(bookId: String): ProgressDto? {
-            val response = api.progress(bookId.toLong())
+            val response = api.book(bookId.toLong(), withDescription = false)
             val audio = response.audiobookProgress ?: return null
             val layout = layout(bookId)
             val absoluteMs = TrackTimeline.toAbsoluteMs(layout.tracks, audio.trackIndex.takeIf { layout.folderBased }, audio.positionMs ?: 0)
@@ -159,8 +156,8 @@ class GrimmoryClient
                     else -> 0f
                 }
             api.updateProgress(
-                bookId.toLong(),
                 GrimmoryProgressUpdate(
+                    bookId = bookId.toLong(),
                     fileProgress =
                         layout.bookFileId?.let {
                             GrimmoryFileProgress(
@@ -285,13 +282,14 @@ class GrimmoryClient
                 ?.take(TITLE_MAX)
                 ?.takeIf { it.isNotBlank() } ?: AUTO_TITLE_PREFIX + TimeFormat.clock(positionSeconds)
 
-        private suspend fun allPages(fetch: suspend (Int) -> GrimmoryPage<GrimmoryBookSummary>): List<GrimmoryBookSummary> {
-            val books = mutableListOf<GrimmoryBookSummary>()
+        /** Every book matching [facets], across all pages. */
+        private suspend fun allPages(facets: List<String>): List<GrimmoryBook> {
+            val books = mutableListOf<GrimmoryBook>()
             var page = 0
             while (true) {
-                val result = fetch(page)
+                val result = api.books(page, GrimmoryApi.PAGE_SIZE, facets)
                 books += result.content
-                if (!result.hasNext || result.content.isEmpty() || page >= MAX_PAGES) break
+                if (result.content.isEmpty() || page + 1 >= result.page.totalPages || page >= MAX_PAGES) break
                 page++
             }
             return books
@@ -299,6 +297,9 @@ class GrimmoryClient
 
         companion object {
             private const val SHELF_SIZE = 10
+
+            /** Grimmory is a general book server; every list asks for audiobooks only. */
+            private val AUDIOBOOKS = listOf("file_type:${GrimmoryApi.AUDIOBOOK}")
             private const val READ = "READ"
             private val IN_PROGRESS = listOf("READING", "RE_READING")
             private const val TITLE_MAX = 255
@@ -338,7 +339,10 @@ internal fun GrimmoryAudiobookInfo.toLayout(): AudioLayout {
     )
 }
 
-internal fun GrimmoryBookSummary.isAudiobook(): Boolean = primaryFileType == null || primaryFileType == GrimmoryApi.AUDIOBOOK
+/** All of a book's files; books that are also ebooks list the audio as an alternative format. */
+private fun GrimmoryBook.files(): List<GrimmoryBookFile> = listOfNotNull(primaryFile) + alternativeFormats.orEmpty()
+
+private fun GrimmoryBook.audioFile(): GrimmoryBookFile? = files().firstOrNull { it.bookType == GrimmoryApi.AUDIOBOOK }
 
 /** Cover version: changes whenever the cover image does, so cached files invalidate. */
 private fun coverVersion(
@@ -346,29 +350,31 @@ private fun coverVersion(
     coverUpdatedOn: String?,
 ): String? = audiobookCoverUpdatedOn ?: coverUpdatedOn
 
-internal fun GrimmoryBookSummary.toSummary(): BookSummaryDto =
-    BookSummaryDto(
+internal fun GrimmoryBook.toSummary(): BookSummaryDto {
+    val m = metadata ?: GrimmoryBookMetadata()
+    return BookSummaryDto(
         id = id.toString(),
-        title = title ?: primaryFileName ?: "Untitled",
-        authors = authors.orEmpty().toNamed(::AuthorDto),
-        narrators = splitNames(narrator).toNamed(::NarratorDto),
-        genres = categories.orEmpty().toNamed(::GenreDto),
-        series = seriesRefs(seriesName, seriesNumber),
-        publisher = publisher?.takeIf { it.isNotBlank() }?.let { PublisherDto(it, it) },
-        language = language,
-        size = fileSizeKb?.times(1024),
-        publishedYear = publishedDate?.take(4)?.toIntOrNull(),
-        publishedDate = publishedDate,
+        title = m.title ?: title ?: audioFile()?.fileName ?: "Untitled",
+        authors = m.authors.orEmpty().toNamed(::AuthorDto),
+        narrators = splitNames(m.narrator).toNamed(::NarratorDto),
+        genres = m.categories.orEmpty().toNamed(::GenreDto),
+        series = seriesRefs(m.seriesName, m.seriesNumber),
+        publisher = m.publisher?.takeIf { it.isNotBlank() }?.let { PublisherDto(it, it) },
+        language = m.language,
+        size = audioFile()?.fileSizeKb?.times(1024),
+        publishedYear = m.publishedDate?.take(4)?.toIntOrNull(),
+        publishedDate = m.publishedDate,
         addedAt = addedOn,
         libraryId = libraryId?.toString(),
-        hasCover = coverVersion(audiobookCoverUpdatedOn, coverUpdatedOn) != null,
-        audiobookCover = audiobookCoverUpdatedOn != null,
-        updatedAt = coverVersion(audiobookCoverUpdatedOn, coverUpdatedOn),
-        progressFraction = readProgress?.let { (it / 100f).coerceIn(0f, 1f) },
+        hasCover = coverVersion(m.audiobookCoverUpdatedOn, m.coverUpdatedOn) != null,
+        audiobookCover = m.audiobookCoverUpdatedOn != null,
+        updatedAt = coverVersion(m.audiobookCoverUpdatedOn, m.coverUpdatedOn),
+        progressFraction = audiobookProgress?.percentage?.let { (it / 100f).coerceIn(0f, 1f) },
         finished = readStatus == "READ",
     )
+}
 
-internal fun GrimmoryBookDetail.toDetail(
+internal fun GrimmoryBook.toDetail(
     info: GrimmoryAudiobookInfo,
     layout: AudioLayout,
 ): BookDetailDto {
@@ -401,28 +407,33 @@ internal fun GrimmoryBookDetail.toDetail(
         }
     val fileNames = info.tracks.orEmpty().associate { it.index to it.fileName }
     val sizes = info.tracks.orEmpty().associate { it.index to it.fileSizeBytes }
-    val audioFile = files.orEmpty().firstOrNull { it.id == info.bookFileId }
+    val audioFile = files().firstOrNull { it.id == info.bookFileId }
+    val m = metadata ?: GrimmoryBookMetadata()
     return BookDetailDto(
         id = id.toString(),
-        title = title ?: info.title ?: "Untitled",
-        subtitle = subtitle,
-        authors = authors.orEmpty().ifEmpty { listOfNotNull(info.author) }.toNamed(::AuthorDto),
-        narrators = splitNames(narrator ?: info.narrator).toNamed(::NarratorDto),
-        genres = categories.orEmpty().toNamed(::GenreDto),
-        series = seriesRefs(seriesName, seriesNumber),
+        title = m.title ?: title ?: info.title ?: "Untitled",
+        subtitle = m.subtitle,
+        authors =
+            m.authors
+                .orEmpty()
+                .ifEmpty { listOfNotNull(info.author) }
+                .toNamed(::AuthorDto),
+        narrators = splitNames(m.narrator ?: info.narrator).toNamed(::NarratorDto),
+        genres = m.categories.orEmpty().toNamed(::GenreDto),
+        series = seriesRefs(m.seriesName, m.seriesNumber),
         durationSeconds = layout.durationMs / 1000.0,
         size = info.totalSizeBytes ?: audioFile?.fileSizeKb?.times(1024),
-        publishedYear = publishedDate?.take(4)?.toIntOrNull(),
-        publishedDate = publishedDate,
+        publishedYear = m.publishedDate?.take(4)?.toIntOrNull(),
+        publishedDate = m.publishedDate,
         addedAt = addedOn,
         libraryId = libraryId?.toString(),
-        hasCover = coverVersion(audiobookCoverUpdatedOn, coverUpdatedOn) != null,
-        audiobookCover = audiobookCoverUpdatedOn != null,
-        updatedAt = coverVersion(audiobookCoverUpdatedOn, coverUpdatedOn),
-        description = description,
-        publisher = publisher?.takeIf { it.isNotBlank() }?.let { PublisherDto(it, it) },
-        isbn = isbn13,
-        language = language,
+        hasCover = coverVersion(m.audiobookCoverUpdatedOn, m.coverUpdatedOn) != null,
+        audiobookCover = m.audiobookCoverUpdatedOn != null,
+        updatedAt = coverVersion(m.audiobookCoverUpdatedOn, m.coverUpdatedOn),
+        description = m.description,
+        publisher = m.publisher?.takeIf { it.isNotBlank() }?.let { PublisherDto(it, it) },
+        isbn = m.isbn13,
+        language = m.language,
         chapters = chapters,
         folderBased = layout.folderBased,
         bookFileId = layout.bookFileId?.toString(),
